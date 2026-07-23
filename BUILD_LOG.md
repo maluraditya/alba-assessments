@@ -68,7 +68,7 @@
 - Live Gemini and REST Countries credentials are intentionally absent from the repository; their production smoke tests remain part of deployment verification.
 - Google News RSS is a pragmatic free source rather than a contractual API.
 - Chromium was exercised directly; Firefox and Safari require manual cross-browser review before submission.
-- Repository publishing, Vercel deployment, and the optional walkthrough video require the final URLs and account access.
+- The repository is public. Vercel deployment and the optional walkthrough video still require their final URLs and account access.
 
 ## Time spent
 

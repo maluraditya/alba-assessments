@@ -71,7 +71,7 @@ This is the release gate for Signal. An item may be checked only after implement
 ## Submission
 
 - [ ] Public live URL works in a signed-out browser.
-- [ ] Source repository is public or shared with the reviewer.
+- [x] Source repository is public or shared with the reviewer.
 - [x] `.env.example` is included and contains no real secret.
 - [x] `BUILD_LOG.md` contains decisions, trade-offs, failures, verification, limitations, and honest timing.
 - [ ] Video walkthrough demonstrates the product, one proud technical detail, and one challenge.
