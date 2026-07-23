@@ -282,7 +282,7 @@ export function SearchBar({
             id={listboxId}
             role="listbox"
             aria-label="Company matches"
-            className="max-h-[min(25rem,52svh)] touch-pan-y [scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,.18)_transparent] overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]"
+            className="max-h-[180px] touch-pan-y [scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,.18)_transparent] overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]"
           >
             {lookupState === "loading" || lookupState === "idle" ? (
               <div
@@ -317,7 +317,7 @@ export function SearchBar({
                   onMouseEnter={() => setActiveIndex(index)}
                   onClick={() => navigate(suggestion.query)}
                   className={cn(
-                    "flex w-full items-center gap-3 px-4 py-3 text-left transition",
+                    "flex h-[60px] w-full items-center gap-3 px-4 text-left transition",
                     activeIndex === index
                       ? "bg-blue-300/[0.08]"
                       : "hover:bg-white/[0.04]",
