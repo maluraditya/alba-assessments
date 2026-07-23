@@ -10,6 +10,11 @@ the same two isolated workspaces.
 - Account B: `sam@pipelineos.demo`
 - Seed password: `PipelineOS-demo-2026!`
 
+The accounts are both usable demo workspaces, not an owner account and an empty
+test shell. Account A models a larger enterprise pipeline; Account B models a
+smaller mid-market pipeline with different customers, values, sources, stages,
+revenue history, tags, and activity timing.
+
 ## Verification procedure
 
 1. Sign in as Account A and create one company, contact, deal, activity, and tag.
@@ -35,10 +40,12 @@ delete, aggregate, or reference any Account A record.
 The production assessment project is checked through the authenticated REST
 API after migrations deploy:
 
-- Account A can read its five companies and cannot read Account B's isolation
-  test company by UUID.
-- Account B can read its single isolation test company and cannot read any of
-  Account A's five companies, including direct UUID requests.
+- Account A can read its 9 companies, 9 contacts, and 13 deals, but cannot read
+  Account B's records, including direct UUID requests.
+- Account B can read its 4 companies, 3 contacts, and 7 deals, but cannot read
+  any of Account A's records, including direct UUID requests.
+- The authenticated analytics RPC returns different aggregates for the two
+  accounts because it executes through owner-scoped RLS.
 - Anonymous inserts return PostgreSQL error `42501`.
 - Anonymous analytics and search RPC calls return HTTP `401`.
 - Cross-owner activity and deal-tag writes are rejected by ownership triggers.

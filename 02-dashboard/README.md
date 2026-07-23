@@ -33,7 +33,16 @@ The application does not fall back to local JSON or mock CRM records. Supabase c
 
 ## Demo data
 
-`supabase/seed.sql` is deterministic development/test data for local or disposable environments. The hosted assessment project also contains an isolated synthetic workspace created by a versioned migration. Demo records live in Supabase and are protected by the same RLS policies as every other workspace; no demo dataset is bundled into the frontend.
+The hosted assessment project includes two intentionally different synthetic workspaces:
+
+| Account | Email | Password | Workspace profile |
+| --- | --- | --- | --- |
+| Alex Morgan | `alex@pipelineos.demo` | `PipelineOS-demo-2026!` | Enterprise, multi-channel pipeline: 9 companies and 13 deals |
+| Sam Rivera | `sam@pipelineos.demo` | `PipelineOS-demo-2026!` | Mid-market pipeline: 4 companies and 7 deals |
+
+Use both accounts to compare dashboard metrics and verify the security boundary. These credentials are assessment-only. Each account has different companies, contacts, deal stages, sources, revenue history, tags, and activities.
+
+`supabase/seed.sql` is deterministic development/test data for local or disposable environments. The hosted assessment project contains the same isolated synthetic workspaces through versioned migrations. Demo records live in Supabase and are protected by the same RLS policies as every other workspace; no demo dataset is bundled into the frontend.
 
 Remove assessment accounts and seed migrations before adapting this repository for real customer data.
 
