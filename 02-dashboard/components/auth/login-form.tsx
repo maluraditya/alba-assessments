@@ -1,14 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { ArrowRight, LoaderCircle, MailCheck, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 
 export function LoginForm() {
-  const router = useRouter();
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
@@ -39,8 +37,7 @@ export function LoginForm() {
       if (result.error) throw result.error;
       if (mode === "login" || result.data.session) {
         toast.success(mode === "login" ? "Welcome back" : "Account created");
-        router.push("/dashboard");
-        router.refresh();
+        window.location.assign("/dashboard");
       } else {
         setConfirmationEmail(email);
         setPassword("");
