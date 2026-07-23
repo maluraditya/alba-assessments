@@ -145,3 +145,5 @@ Verified locally:
 - Gemini and REST Countries live-key paths require deployment credentials and must be smoke-tested after those secrets are configured.
 
 See [`BUILD_LOG.md`](./BUILD_LOG.md) for the decision journal and [`docs/ASSESSMENT_CHECKLIST.md`](./docs/ASSESSMENT_CHECKLIST.md) for the release gate.
+
+For a standalone, reviewer-ready explanation of the API choices, architecture, advanced features, and verification approach, see [`docs/12_SUBMISSION_DOCUMENTATION.md`](./docs/12_SUBMISSION_DOCUMENTATION.md).
