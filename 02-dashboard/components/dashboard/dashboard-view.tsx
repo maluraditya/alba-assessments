@@ -1,150 +1,32 @@
 import Link from "next/link";
-import {
-  ArrowRight,
-  CalendarClock,
-  CircleDollarSign,
-  CircleGauge,
-  Handshake,
-  Plus,
-  Target,
-  TrendingUp,
-} from "lucide-react";
+import { ArrowRight, ArrowUpRight, CalendarClock, CircleDollarSign, Gauge, Radio, Target, TrendingUp } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MetricCard } from "./metric-card";
-import { RevenueChart } from "@/components/charts/revenue-chart";
-import { PipelineChart } from "@/components/charts/pipeline-chart";
+import { FunnelChart } from "@/components/charts/funnel-chart";
+import { SourceChart } from "@/components/charts/source-chart";
+import { ActivityTrendChart } from "@/components/charts/activity-trend-chart";
 import type { Activity, AnalyticsPayload, Deal, Profile } from "@/lib/types";
 import { formatCompactCurrency } from "@/lib/utils";
 
+const sourceColors = ["#25261f", "#9aca43", "#c8b6ff", "#f2bd5a", "#8aa1b1"];
+
 export function DashboardView({ analytics, deals, activities, profile }: { analytics: AnalyticsPayload; deals: Deal[]; activities: Activity[]; profile?: Profile }) {
-  const { metrics, monthlyRevenue, pipelineByStage } = analytics;
+  const { metrics, conversionFunnel, dealsBySource, activitiesCompleted } = analytics;
   const firstName = profile?.full_name?.split(" ")[0] || "there";
   const today = new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric" }).format(new Date());
-  return (
-    <AppShell>
-      <div className="mx-auto max-w-[1540px] px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
-        <PageHeader
-          eyebrow={today}
-          title={`Good morning, ${firstName}.`}
-          description={`Here’s the live pulse of your pipeline. ${metrics.openDeals} active ${metrics.openDeals === 1 ? "deal" : "deals"} and ${metrics.overdueActivities} overdue ${metrics.overdueActivities === 1 ? "activity" : "activities"}.`}
-          actions={
-            <>
-              <Link href="/analytics" className="hidden h-10 items-center justify-center rounded-lg border border-[#dedfd8] bg-white px-4 text-sm font-medium text-[#22231f] transition hover:bg-[#f5f5f1] focus-visible:ring-2 focus-visible:ring-[#d8ff72] sm:inline-flex">
-                View analytics
-              </Link>
-              <Link href="/deals" className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[#d8ff72] px-4 text-sm font-medium text-[#11120f] transition hover:bg-[#e3ff94] focus-visible:ring-2 focus-visible:ring-[#d8ff72] focus-visible:ring-offset-2 focus-visible:ring-offset-[#10110f]">
-                <Plus className="size-4" />
-                New deal
-              </Link>
-            </>
-          }
-        />
+  const totalDeals = conversionFunnel.reduce((sum, item) => sum + item.deals, 0);
+  const completedThisWeek = activitiesCompleted.reduce((sum, item) => sum + item.completed, 0);
+  const topDeals = [...deals].sort((a, b) => b.value - a.value).slice(0, 5);
 
-        <section className="mt-9 grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Key sales metrics">
-          <MetricCard label="Open pipeline" value={formatCompactCurrency(metrics.pipelineValue)} helper="from last month" delta={metrics.pipelineDelta} icon={TrendingUp} />
-          <MetricCard label="Revenue won" value={formatCompactCurrency(metrics.wonRevenue)} helper="this month" delta={metrics.revenueDelta} icon={CircleDollarSign} />
-          <MetricCard label="Win rate" value={`${metrics.winRate}%`} helper="across closed deals" icon={Target} />
-          <MetricCard label="Average deal" value={formatCompactCurrency(metrics.averageDealSize)} helper={`${metrics.openDeals} active opportunities`} icon={CircleGauge} />
-        </section>
+  return <AppShell><div className="mx-auto max-w-[1540px] px-4 py-8 sm:px-6 lg:px-8 lg:py-10"><PageHeader eyebrow={today} title={`Command center, ${firstName}.`} description="One live view of conversion, channel performance, execution pace, and the deals that need a decision." actions={<div className="flex items-center gap-2"><Link href="/analytics" className="hidden h-10 items-center rounded-lg border border-[#dedfd8] bg-white px-4 text-sm font-medium text-[#22231f] transition hover:bg-[#f5f5f1] sm:inline-flex">Deep analytics</Link><Link href="/deals" className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#d8ff72] px-4 text-sm font-medium text-[#11120f] transition hover:bg-[#e3ff94]">View deals <ArrowRight className="size-4" /></Link></div>} />
 
-        <section className="mt-4 grid gap-4 xl:grid-cols-[1.6fr_1fr]">
-          <Card className="p-5 sm:p-6">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm font-semibold tracking-[-0.02em]">Revenue momentum</p>
-                <p className="mt-1 text-[11px] text-[#85877e]">Closed-won revenue by month</p>
-              </div>
-              <Badge className="bg-[#eff7dd] text-[#5e7e26]">Live</Badge>
-            </div>
-            <div className="mt-5">
-              <RevenueChart data={monthlyRevenue} />
-            </div>
-          </Card>
-          <Card className="p-5 sm:p-6">
-            <div>
-              <p className="text-sm font-semibold tracking-[-0.02em]">Pipeline by stage</p>
-              <p className="mt-1 text-[11px] text-[#85877e]">Current open opportunity value</p>
-            </div>
-            <div className="mt-5">
-              <PipelineChart data={pipelineByStage} />
-            </div>
-          </Card>
-        </section>
+  <section className="relative mt-8 overflow-hidden rounded-[22px] border border-[#292a24] bg-[#11120f] px-5 py-6 text-white shadow-[0_20px_70px_rgba(15,16,13,.18)] sm:px-7 sm:py-7"><div className="absolute -right-24 -top-28 size-80 rounded-full bg-[#d8ff72]/10 blur-[80px]" /><div className="relative grid gap-8 xl:grid-cols-[1.1fr_.9fr] xl:items-end"><div><span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[10px] font-medium uppercase tracking-[0.14em] text-[#b4b6ae]"><Radio className="size-3 text-[#d8ff72]" /> Live revenue signal</span><p className="mt-6 text-[11px] uppercase tracking-[0.16em] text-[#6f716a]">Open pipeline</p><div className="mt-2 flex flex-wrap items-end gap-x-5 gap-y-2"><p className="font-serif text-5xl leading-none tracking-[-0.05em] sm:text-7xl">{formatCompactCurrency(metrics.pipelineValue)}</p><p className="pb-1 text-xs leading-5 text-[#85877e]">across <strong className="font-medium text-white">{metrics.openDeals}</strong> active opportunities<br />from <strong className="font-medium text-white">{dealsBySource.length}</strong> acquisition channels</p></div><div className="mt-7 flex flex-wrap gap-2">{dealsBySource.slice(0, 5).map((source, index) => <span key={source.source} className="inline-flex items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-[10px] text-[#afb1a9]"><span className="size-1.5 rounded-full" style={{ backgroundColor: sourceColors[index % sourceColors.length] }} />{source.source}<strong className="font-medium text-white">{source.deals}</strong></span>)}</div></div><div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.08]">{[["Win rate", `${metrics.winRate}%`, Target], ["Won this month", formatCompactCurrency(metrics.wonRevenue), CircleDollarSign], ["Average deal", formatCompactCurrency(metrics.averageDealSize), TrendingUp], ["Actions completed", completedThisWeek.toString(), Gauge]].map(([label, value, Icon]) => { const MetricIcon = Icon as typeof Target; return <div key={String(label)} className="bg-[#171815] p-4 sm:p-5"><MetricIcon className="size-4 text-[#d8ff72]" /><p className="mt-5 text-xl font-semibold tracking-[-0.03em] sm:text-2xl">{String(value)}</p><p className="mt-1 text-[10px] text-[#777970]">{String(label)}</p></div>; })}</div></div></section>
 
-        <section className="mt-4 grid gap-4 xl:grid-cols-[1.25fr_.75fr]">
-          <Card className="overflow-hidden">
-            <div className="flex items-center justify-between border-b border-[#e4e5de] px-5 py-4 sm:px-6">
-              <div>
-                <p className="text-sm font-semibold tracking-[-0.02em]">Deals requiring attention</p>
-                <p className="mt-1 text-[11px] text-[#85877e]">High-value opportunities with upcoming milestones</p>
-              </div>
-              <Link href="/deals" className="flex items-center gap-1 text-[11px] font-medium text-[#5f6159] hover:text-black">
-                View all <ArrowRight className="size-3" />
-              </Link>
-            </div>
-            <div className="divide-y divide-[#ecece6]">
-              {deals.slice(0, 4).map((deal) => (
-                <Link key={deal.id} href="/deals" className="grid grid-cols-[1fr_auto] gap-3 px-5 py-4 transition hover:bg-[#fafaf7] sm:grid-cols-[1.4fr_.65fr_.5fr] sm:items-center sm:px-6">
-                  <div className="min-w-0">
-                    <p className="truncate text-[13px] font-medium text-[#24251f]">{deal.name}</p>
-                    <p className="mt-1 text-[10px] text-[#898b82]">{deal.company?.name}</p>
-                  </div>
-                  <div className="hidden sm:block">
-                    <Badge>{deal.stage.replace("_", " ")}</Badge>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[13px] font-semibold">{formatCompactCurrency(deal.value)}</p>
-                    <p className="mt-1 text-[10px] text-[#898b82]">{deal.probability}% likely</p>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </Card>
+  <section className="mt-4 grid gap-4 xl:grid-cols-[1.45fr_.75fr]"><Card className="relative overflow-hidden border-[#292a24] bg-[#171815] p-5 text-white sm:p-7"><div className="absolute -left-20 bottom-0 size-64 rounded-full bg-[#86b831]/10 blur-[80px]" /><div className="relative flex items-start justify-between"><div><p className="text-sm font-semibold">Pipeline conversion funnel</p><p className="mt-1 text-[11px] text-[#7f8179]">Live value and deal volume from first signal to closed won</p></div><Badge className="border border-white/10 bg-white/[0.05] text-[#c6c8c0]">{totalDeals} stage positions</Badge></div><div className="relative mt-2"><FunnelChart data={conversionFunnel} /></div><div className="relative grid grid-cols-2 gap-2 border-t border-white/[0.08] pt-4 sm:grid-cols-5">{conversionFunnel.map((item) => <div key={item.stage}><p className="text-[10px] text-[#777970]">{item.stage}</p><p className="mt-1 text-sm font-medium">{item.deals} <span className="text-[9px] font-normal text-[#696b64]">deals</span></p></div>)}</div></Card><Card className="p-5 sm:p-6"><div className="flex items-start justify-between"><div><p className="text-sm font-semibold">Channel mix</p><p className="mt-1 text-[11px] text-[#85877e]">Where opportunities enter the business</p></div><ArrowUpRight className="size-4 text-[#8a8c83]" /></div><SourceChart data={dealsBySource} /><div className="space-y-2.5">{dealsBySource.map((source, index) => <div key={source.source} className="grid grid-cols-[auto_1fr_auto] items-center gap-2 text-[10px]"><span className="size-2 rounded-full" style={{ backgroundColor: sourceColors[index % sourceColors.length] }} /><span className="text-[#6f7169]">{source.source}</span><span className="font-medium text-[#24251f]">{source.deals} · {formatCompactCurrency(source.value)}</span></div>)}</div></Card></section>
 
-          <Card className="overflow-hidden">
-            <div className="flex items-center justify-between border-b border-[#e4e5de] px-5 py-4">
-              <div>
-                <p className="text-sm font-semibold tracking-[-0.02em]">Next up</p>
-                <p className="mt-1 text-[11px] text-[#85877e]">Your upcoming activities</p>
-              </div>
-              <CalendarClock className="size-4 text-[#8d8f86]" />
-            </div>
-            <div className="divide-y divide-[#ecece6]">
-              {activities.slice(0, 4).map((activity, index) => (
-                <div key={activity.id} className="flex gap-3 px-5 py-4">
-                  <div className="mt-0.5 flex flex-col items-center">
-                    <span className="grid size-7 place-items-center rounded-full border border-[#dfe0d9] bg-[#f7f7f3] text-[10px] font-semibold">{index + 1}</span>
-                    {index < 3 ? <span className="mt-1 h-full w-px bg-[#e4e5de]" /> : null}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="truncate text-[12px] font-medium">{activity.title}</p>
-                    <p className="mt-1 truncate text-[10px] text-[#8a8c83]">{activity.deal?.name}</p>
-                    <p className="mt-2 text-[10px] font-medium text-[#67724e]">{activity.due_at ? new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(activity.due_at)) : "No due date"}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </section>
+  <section className="mt-4 grid gap-4 xl:grid-cols-[.82fr_1.18fr]"><Card className="border-[#292a24] bg-[#171815] p-5 text-white sm:p-6"><div className="flex items-start justify-between"><div><p className="text-sm font-semibold">Execution velocity</p><p className="mt-1 text-[11px] text-[#777970]">Completed activities over the last seven days</p></div><span className="rounded-lg bg-[#d8ff72] px-2.5 py-1 text-[10px] font-semibold text-[#11120f]">{completedThisWeek} done</span></div><div className="mt-3"><ActivityTrendChart data={activitiesCompleted} /></div></Card><Card className="overflow-hidden"><div className="flex items-center justify-between border-b border-[#e4e5de] px-5 py-4 sm:px-6"><div><p className="text-sm font-semibold">Revenue priority queue</p><p className="mt-1 text-[11px] text-[#85877e]">Largest active bets, ranked by potential value</p></div><Link href="/deals" className="flex items-center gap-1 text-[11px] font-medium text-[#5f6159] hover:text-black">View all <ArrowRight className="size-3" /></Link></div><div className="divide-y divide-[#ecece6]">{topDeals.map((deal, index) => <Link key={deal.id} href="/deals" className="grid grid-cols-[28px_1fr_auto] items-center gap-3 px-5 py-3.5 transition hover:bg-[#fafaf7] sm:px-6"><span className="grid size-7 place-items-center rounded-lg bg-[#f0f1eb] text-[10px] font-semibold text-[#6f7169]">{index + 1}</span><div className="min-w-0"><p className="truncate text-[12px] font-medium">{deal.name}</p><p className="mt-1 truncate text-[10px] text-[#8a8c83]">{deal.company?.name} · {deal.source}</p></div><div className="text-right"><p className="text-[12px] font-semibold">{formatCompactCurrency(deal.value)}</p><p className="mt-1 text-[9px] text-[#85877e]">{deal.probability}% confidence</p></div></Link>)}</div></Card></section>
 
-        <section className="mt-4 rounded-2xl border border-[#25261f] bg-[#171815] p-5 text-white sm:flex sm:items-center sm:justify-between sm:p-6">
-          <div className="flex items-start gap-4">
-            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-[#d8ff72] text-[#171815]">
-              <Handshake className="size-4" />
-            </span>
-            <div>
-              <p className="text-sm font-medium">Pipeline snapshot</p>
-              <p className="mt-1 max-w-xl text-[11px] leading-5 text-[#8f9189]">
-                {formatCompactCurrency(metrics.pipelineValue)} is currently open across {metrics.openDeals} opportunities, with a {metrics.winRate}% win rate on closed deals.
-              </p>
-            </div>
-          </div>
-          <Link href="/analytics" className="mt-4 inline-flex h-8 items-center gap-2 rounded-lg bg-white px-3 text-xs font-medium text-[#20211d] sm:mt-0">Review analytics <ArrowRight className="size-3" /></Link>
-        </section>
-      </div>
-    </AppShell>
-  );
+  <section className="mt-4 grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center"><Card className="overflow-hidden"><div className="flex items-center justify-between border-b border-[#e4e5de] px-5 py-4"><div><p className="text-sm font-semibold">Next commitments</p><p className="mt-1 text-[11px] text-[#85877e]">The actions that keep this week moving</p></div><CalendarClock className="size-4 text-[#8d8f86]" /></div><div className="grid divide-y divide-[#ecece6] md:grid-cols-3 md:divide-x md:divide-y-0">{activities.slice(0, 3).map((activity) => <Link href="/activities" key={activity.id} className="p-5 transition hover:bg-[#fafaf7]"><p className="text-[12px] font-medium">{activity.title}</p><p className="mt-1 truncate text-[10px] text-[#8a8c83]">{activity.deal?.name}</p><p className="mt-4 text-[10px] font-medium text-[#617641]">{activity.due_at ? new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(activity.due_at)) : "No due date"}</p></Link>)}</div></Card><Link href="/analytics" className="group flex min-h-24 items-center justify-between gap-8 rounded-2xl border border-[#25261f] bg-[#d8ff72] px-6 py-5 text-[#171815] transition hover:bg-[#e3ff94] lg:min-h-full"><div><p className="text-[10px] font-semibold uppercase tracking-[0.14em]">Go deeper</p><p className="mt-1 font-serif text-2xl tracking-[-0.03em]">Open analytics</p></div><ArrowRight className="size-5 transition group-hover:translate-x-1" /></Link></section></div></AppShell>;
 }

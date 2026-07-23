@@ -104,6 +104,13 @@ export interface StageMetric {
 export interface SourceMetric {
   source: string;
   deals: number;
+  value: number;
+}
+
+export interface FunnelMetric {
+  stage: string;
+  deals: number;
+  value: number;
 }
 
 export interface ActivityMetric {
@@ -115,6 +122,7 @@ export interface AnalyticsPayload {
   metrics: DashboardMetrics;
   monthlyRevenue: MonthlyRevenue[];
   pipelineByStage: StageMetric[];
+  conversionFunnel: FunnelMetric[];
   dealsBySource: SourceMetric[];
   activitiesCompleted: ActivityMetric[];
 }

@@ -7,7 +7,7 @@ This document maps the Alba Corp brief and the extended PipelineOS brief to conc
 - [x] **Structured multi-entity product** — normalized CRM with profiles, companies, contacts, deals, activities, tags, and deal tags.
 - [x] **Full CRUD** — authenticated repository operations and working create/edit/delete UI for companies, contacts, deals, and activities; tags and profiles use the same reusable repository.
 - [x] **Handled mutation feedback** — optimistic updates/deletes roll back on errors; creates show pending states; successful actions use toasts.
-- [x] **Meaningful charts** — monthly closed-won revenue, pipeline value by stage, and deals by source use Recharts.
+- [x] **Meaningful charts** — monthly closed-won revenue, pipeline value by stage, lead-to-win funnel, deals by source, and activity velocity use Recharts.
 - [x] **Beautiful, fluid UI** — responsive product shell, purposeful spacing, Framer Motion transitions, keyboard focus, reduced-motion support, loading skeletons, error recovery, and empty states.
 - [x] **Backend as source of truth** — no local CRM JSON, browser storage, or mock-data fallback; all persisted data is read from and written to Supabase.
 - [x] **Complete data-model documentation** — schema, types, constraints, indexes, relationships, functions, migration order, ERD, and deployment configuration are documented.

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, LoaderCircle } from "lucide-react";
+import { ArrowRight, LoaderCircle, MailCheck, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -14,12 +14,13 @@ export function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [confirmationEmail, setConfirmationEmail] = useState<string | null>(null);
   const configured = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     if (!configured) {
-      toast("Demo mode is active. Configure Supabase to enable sign-in.");
+      toast.error("Supabase is not configured. Add the project environment values.");
       return;
     }
     setLoading(true);
@@ -36,10 +37,34 @@ export function LoginForm() {
             },
           });
       if (result.error) throw result.error;
-      toast.success(mode === "login" ? "Welcome back" : "Check your inbox to confirm your account");
-      if (mode === "login") router.push("/dashboard");
+      if (mode === "login" || result.data.session) {
+        toast.success(mode === "login" ? "Welcome back" : "Account created");
+        router.push("/dashboard");
+        router.refresh();
+      } else {
+        setConfirmationEmail(email);
+        setPassword("");
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to sign in");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function resendConfirmation() {
+    if (!confirmationEmail) return;
+    setLoading(true);
+    try {
+      const { error } = await createClient().auth.resend({
+        type: "signup",
+        email: confirmationEmail,
+        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+      });
+      if (error) throw error;
+      toast.success("A new confirmation email has been sent");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to resend confirmation email");
     } finally {
       setLoading(false);
     }
@@ -65,6 +90,19 @@ export function LoginForm() {
   }
 
   const fieldClass = "mt-1.5 h-11 w-full rounded-lg border border-white/10 bg-white/[0.05] px-3 text-sm text-white outline-none placeholder:text-[#595b54] focus:border-[#b0cc62] focus:ring-2 focus:ring-[#d8ff72]/20";
+
+  if (confirmationEmail) {
+    return (
+      <section className="mt-8 rounded-2xl border border-white/10 bg-white/[0.04] p-6" role="status" aria-live="polite">
+        <span className="grid size-11 place-items-center rounded-xl bg-[#d8ff72] text-[#10110f]"><MailCheck className="size-5" /></span>
+        <h2 className="mt-5 text-lg font-semibold text-white">Check your inbox</h2>
+        <p className="mt-2 text-xs leading-6 text-[#92958c]">We sent a confirmation link to <strong className="font-medium text-[#d7d8d2]">{confirmationEmail}</strong>. Open the email and confirm your account to continue to PipelineOS.</p>
+        <p className="mt-3 text-[11px] leading-5 text-[#696b64]">The link may take a minute to arrive. Check your spam folder if you don’t see it.</p>
+        <Button type="button" variant="outline" className="mt-6 w-full border-white/10 bg-white/[0.04] text-white hover:bg-white/[0.08]" disabled={loading} onClick={resendConfirmation}>{loading ? <LoaderCircle className="size-4 animate-spin" /> : <RefreshCw className="size-3.5" />} Resend confirmation email</Button>
+        <button type="button" onClick={() => { setConfirmationEmail(null); setEmail(""); }} className="mt-4 w-full text-center text-[11px] text-[#82847c] hover:text-white">Use a different email</button>
+      </section>
+    );
+  }
 
   return (
     <form onSubmit={submit} className="mt-8">

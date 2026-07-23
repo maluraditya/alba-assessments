@@ -41,8 +41,10 @@ The `get_dashboard_analytics` RPC returns:
 - headline metrics
 - six-month closed-won revenue
 - pipeline value and count by stage
+- lead-to-closed-won conversion funnel
 - deal count by source
-- recently completed activities
+- deal value by acquisition source
+- a zero-filled seven-day activity completion series
 
 The frontend treats this payload as chart-ready data and does not recompute
 business metrics in React.

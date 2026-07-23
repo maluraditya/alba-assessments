@@ -107,6 +107,11 @@ test("keeps analytics in PostgreSQL", async () => {
     /create or replace function public\.get_dashboard_analytics/,
   );
   assert.match(schema, /security invoker/);
+  const dashboardMigration = await source(
+    "supabase/migrations/202607240008_executive_dashboard.sql",
+  );
+  assert.match(dashboardMigration, /'conversionFunnel'/);
+  assert.match(dashboardMigration, /generate_series/);
 });
 
 test("global search is authenticated and server-computed", async () => {
