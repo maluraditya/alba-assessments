@@ -6,5 +6,5 @@ export const metadata: Metadata = { title: "Dashboard" };
 
 export default async function DashboardPage() {
   const data = await loadDashboard();
-  return <DashboardView analytics={data.analytics} deals={data.deals} activities={data.activities} />;
+  return <DashboardView analytics={data.analytics} deals={data.deals} activities={data.activities} profile={data.profile} />;
 }

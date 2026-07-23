@@ -10,7 +10,6 @@ import {
 import type { DealStage } from "./types";
 
 export const APP_NAME = "PipelineOS";
-export const DEMO_OWNER_ID = "d0000000-0000-4000-8000-000000000001";
 
 export const NAV_ITEMS = [
   { label: "Dashboard", href: "/dashboard", icon: Gauge },

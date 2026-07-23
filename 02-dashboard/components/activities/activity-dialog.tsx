@@ -1,0 +1,15 @@
+"use client";
+
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import type { Activity, Contact, Deal } from "@/lib/types";
+import { FormDialog, formFieldClass } from "@/components/shared/form-dialog";
+
+const schema = z.object({ deal_id: z.string().uuid(), contact_id: z.string().optional(), type: z.enum(["call", "email", "meeting", "task", "note"]), title: z.string().trim().min(1).max(200), description: z.string().trim().optional(), due_at: z.string().optional() });
+export type ActivityFormValues = z.infer<typeof schema>;
+
+export function ActivityDialog({ open, onOpenChange, activity, deals, contacts, pending, onSave }: { open: boolean; onOpenChange: (value: boolean) => void; activity?: Activity | null; deals: Deal[]; contacts: Contact[]; pending: boolean; onSave: (values: ActivityFormValues) => Promise<void> }) {
+  const form = useForm<z.input<typeof schema>, unknown, ActivityFormValues>({ resolver: zodResolver(schema), values: { deal_id: activity?.deal_id ?? deals[0]?.id ?? "", contact_id: activity?.contact_id ?? "", type: activity?.type ?? "task", title: activity?.title ?? "", description: activity?.description ?? "", due_at: activity?.due_at?.slice(0, 16) ?? "" } });
+  return <FormDialog open={open} onOpenChange={onOpenChange} title={activity ? "Edit activity" : "Add activity"} description="Schedule the next action against an active opportunity." submitLabel={activity ? "Save changes" : "Create activity"} pending={pending} onSubmit={form.handleSubmit(async (values) => { await onSave(values); onOpenChange(false); })}><label className="block text-[11px] font-medium text-[#565850]">Title<input {...form.register("title")} autoFocus className={formFieldClass} /></label><div className="grid gap-4 sm:grid-cols-2"><label className="block text-[11px] font-medium text-[#565850]">Deal<select {...form.register("deal_id")} className={formFieldClass}>{deals.map((deal) => <option key={deal.id} value={deal.id}>{deal.name}</option>)}</select></label><label className="block text-[11px] font-medium text-[#565850]">Type<select {...form.register("type")} className={formFieldClass}><option value="call">Call</option><option value="email">Email</option><option value="meeting">Meeting</option><option value="task">Task</option><option value="note">Note</option></select></label></div><label className="block text-[11px] font-medium text-[#565850]">Contact<select {...form.register("contact_id")} className={formFieldClass}><option value="">No contact</option>{contacts.map((contact) => <option key={contact.id} value={contact.id}>{contact.first_name} {contact.last_name}</option>)}</select></label><label className="block text-[11px] font-medium text-[#565850]">Due date<input {...form.register("due_at")} type="datetime-local" className={formFieldClass} /></label><label className="block text-[11px] font-medium text-[#565850]">Notes<textarea {...form.register("description")} rows={3} className={`${formFieldClass} h-auto py-3`} /></label></FormDialog>;
+}

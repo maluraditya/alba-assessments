@@ -28,12 +28,14 @@ export function DealDialog({
   deal,
   companies,
   onSubmit,
+  pending,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   deal?: Deal | null;
   companies: Company[];
-  onSubmit: (values: DealFormValues) => void;
+  pending: boolean;
+  onSubmit: (values: DealFormValues) => Promise<void>;
 }) {
   const form = useForm<DealFormInput, unknown, DealFormValues>({
     resolver: zodResolver(dealSchema),
@@ -65,8 +67,8 @@ export function DealDialog({
           </div>
           <form
             className="mt-6 space-y-4"
-            onSubmit={form.handleSubmit((values) => {
-              onSubmit(values);
+            onSubmit={form.handleSubmit(async (values) => {
+              await onSubmit(values);
               onOpenChange(false);
             })}
           >
@@ -124,7 +126,7 @@ export function DealDialog({
             </div>
             <div className="flex justify-end gap-2 border-t border-[#e7e8e1] pt-5">
               <Dialog.Close asChild><Button type="button" variant="outline">Cancel</Button></Dialog.Close>
-              <Button type="submit">{deal ? "Save changes" : "Create deal"}</Button>
+              <Button type="submit" disabled={pending}>{pending ? "Saving…" : deal ? "Save changes" : "Create deal"}</Button>
             </div>
           </form>
         </Dialog.Content>

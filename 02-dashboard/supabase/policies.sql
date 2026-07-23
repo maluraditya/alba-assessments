@@ -23,6 +23,8 @@
 --   get_dashboard_analytics() is SECURITY INVOKER and explicitly filters by
 --   auth.uid(). EXECUTE is revoked from PUBLIC and anon, then granted only to
 --   the authenticated role.
+--   search_workspace(text) follows the same execution grants and returns only
+--   company, contact, and deal rows owned by auth.uid().
 --
 -- Two-account verification:
 --   Follow docs/SECURITY_TEST.md. Account B must receive zero rows and cannot

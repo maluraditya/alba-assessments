@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Activity, Company, Contact, Deal, Profile, Tag } from "@/lib/types";
+import type { Activity, Company, Contact, Deal, DealTag, Profile, Tag } from "@/lib/types";
 
 export const TABLES = {
   profiles: "profiles",
@@ -11,9 +11,10 @@ export const TABLES = {
   dealTags: "deal_tags",
 } as const;
 
-type OwnedEntity = Company | Contact | Deal | Activity | Tag | Profile;
-type Writable<T extends OwnedEntity> = Omit<T, "id" | "created_at" | "updated_at" | "owner_id">;
-type Patch<T extends OwnedEntity> = Partial<Writable<T>>;
+type OwnedEntity = Company | Contact | Deal | DealTag | Activity | Tag | Profile;
+type RelationKey = "company" | "contact" | "deal" | "tags";
+export type WritableEntity<T extends OwnedEntity> = Omit<T, "id" | "created_at" | "updated_at" | "owner_id" | RelationKey>;
+export type EntityPatch<T extends OwnedEntity> = Partial<WritableEntity<T>>;
 
 async function authenticatedUser(client: SupabaseClient) {
   const { data, error } = await client.auth.getUser();
@@ -51,7 +52,7 @@ export class OwnedRepository<T extends OwnedEntity> {
     return data as unknown as T;
   }
 
-  async create(input: Writable<T>) {
+  async create(input: WritableEntity<T>) {
     const user = await authenticatedUser(this.client);
     const { data, error } = await this.client
       .from(this.table)
@@ -62,7 +63,7 @@ export class OwnedRepository<T extends OwnedEntity> {
     return data as unknown as T;
   }
 
-  async update(id: string, patch: Patch<T>) {
+  async update(id: string, patch: EntityPatch<T>) {
     await authenticatedUser(this.client);
     const { data, error } = await this.client
       .from(this.table)
@@ -100,6 +101,7 @@ export function repositories(client: SupabaseClient) {
       "*, deal:deals(id,name)",
     ),
     tags: new OwnedRepository<Tag>(client, TABLES.tags),
+    dealTags: new OwnedRepository<DealTag>(client, TABLES.dealTags),
     profiles: new OwnedRepository<Profile>(client, TABLES.profiles),
   };
 }

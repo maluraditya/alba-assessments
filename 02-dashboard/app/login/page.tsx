@@ -1,12 +1,10 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { ArrowUpRight, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { LoginForm } from "@/components/auth/login-form";
 
 export const metadata: Metadata = { title: "Sign in" };
 
 export default function LoginPage() {
-  const configured = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
   return (
     <main className="grid min-h-screen bg-[#10110f] text-white lg:grid-cols-[1.05fr_.95fr]">
       <section className="relative hidden overflow-hidden border-r border-white/[0.07] p-12 lg:flex lg:flex-col lg:justify-between">
@@ -16,7 +14,7 @@ export default function LoginPage() {
           <p className="font-serif text-[64px] leading-[0.96] tracking-[-0.04em]">Clarity for every deal in motion.</p>
           <p className="mt-6 max-w-md text-sm leading-7 text-[#8f9189]">A focused revenue workspace for teams who want better decisions, not more CRM busywork.</p>
         </div>
-        <div className="relative flex gap-8 text-[10px] uppercase tracking-[0.16em] text-[#62645d]"><span>PostgreSQL</span><span>Row-level security</span><span>Realtime</span></div>
+        <div className="relative flex gap-8 text-[10px] uppercase tracking-[0.16em] text-[#62645d]"><span>PostgreSQL</span><span>Row-level security</span><span>Server analytics</span></div>
       </section>
       <section className="flex items-center justify-center px-5 py-12">
         <div className="w-full max-w-sm">
@@ -24,7 +22,6 @@ export default function LoginPage() {
           <p className="mt-12 font-serif text-4xl tracking-[-0.04em] lg:mt-0">Welcome back.</p>
           <p className="mt-3 text-xs leading-5 text-[#85877e]">Sign in to enter your private sales workspace.</p>
           <LoginForm />
-          {!configured ? <><div className="my-7 flex items-center gap-3 text-[9px] uppercase tracking-wider text-[#4e504a]"><span className="h-px flex-1 bg-white/[0.07]" />Preview<span className="h-px flex-1 bg-white/[0.07]" /></div><Link href="/dashboard" className="flex h-11 items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] text-xs font-medium text-[#c8c9c3] hover:bg-white/[0.07]">Explore demo workspace <ArrowUpRight className="size-3.5" /></Link></> : null}
         </div>
       </section>
     </main>

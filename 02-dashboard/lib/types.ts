@@ -73,6 +73,11 @@ export interface Tag extends BaseEntity {
   color: string;
 }
 
+export interface DealTag extends BaseEntity {
+  deal_id: string;
+  tag_id: string;
+}
+
 export interface DashboardMetrics {
   pipelineValue: number;
   wonRevenue: number;

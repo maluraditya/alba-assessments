@@ -32,7 +32,6 @@ export function RevenueChart({ data }: { data: MonthlyRevenue[] }) {
             labelStyle={{ color: "#9b9d95", marginBottom: 4 }}
             formatter={(value) => [formatCurrency(Number(value)), "Revenue"]}
           />
-          <Area type="monotone" dataKey="target" stroke="#c4c5bd" strokeWidth={1.5} strokeDasharray="4 5" fill="transparent" />
           <Area type="monotone" dataKey="revenue" stroke="#86b831" strokeWidth={2.5} fill="url(#revenue-fill)" activeDot={{ r: 4, fill: "#171815", stroke: "#d8ff72", strokeWidth: 2 }} />
         </AreaChart>
       </ResponsiveContainer>

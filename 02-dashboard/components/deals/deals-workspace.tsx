@@ -1,17 +1,20 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowDownUp, Calendar, Kanban, List, MoreHorizontal, Plus, Trash2 } from "lucide-react";
+import { ArrowDownUp, Calendar, MoreHorizontal, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Company, Deal, DealStage } from "@/lib/types";
-import { DEAL_STAGES, DEMO_OWNER_ID } from "@/lib/constants";
+import { DEAL_STAGES, PAGE_SIZE } from "@/lib/constants";
 import { formatCompactCurrency, formatDate } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ListToolbar } from "@/components/shared/list-toolbar";
 import { DealDialog, type DealFormValues } from "./deal-dialog";
+import { createClient } from "@/lib/supabase/client";
+import { repositories } from "@/lib/data/service";
+import { useOwnedCollection } from "@/hooks/use-owned-collection";
 
 const stageStyle: Record<DealStage, string> = {
   lead: "bg-[#eeeeea] text-[#62645c]",
@@ -23,82 +26,60 @@ const stageStyle: Record<DealStage, string> = {
 };
 
 export function DealsWorkspace({ initialDeals, companies }: { initialDeals: Deal[]; companies: Company[] }) {
-  const [deals, setDeals] = useState(initialDeals);
+  const repository = useMemo(() => repositories(createClient()).deals, []);
+  const collection = useOwnedCollection(initialDeals, repository);
   const [query, setQuery] = useState("");
   const [stage, setStage] = useState<DealStage | "all">("all");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Deal | null>(null);
-  const [, startTransition] = useTransition();
+  const [page, setPage] = useState(1);
+  const [valueDescending, setValueDescending] = useState(true);
 
   const filtered = useMemo(
-    () => deals.filter((deal) => (stage === "all" || deal.stage === stage) && `${deal.name} ${deal.company?.name} ${deal.source}`.toLowerCase().includes(query.toLowerCase())),
-    [deals, query, stage],
+    () => collection.items.filter((deal) => (stage === "all" || deal.stage === stage) && `${deal.name} ${deal.company?.name} ${deal.source}`.toLowerCase().includes(query.toLowerCase())).sort((a, b) => valueDescending ? b.value - a.value : a.value - b.value),
+    [collection.items, query, stage, valueDescending],
   );
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const visible = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  const saveDeal = (values: DealFormValues) => {
-    const company = companies.find((item) => item.id === values.company_id);
-    startTransition(() => {
-      if (editing) {
-        setDeals((current) => current.map((deal) => deal.id === editing.id ? { ...deal, ...values, company, updated_at: new Date().toISOString() } : deal));
-        toast.success("Opportunity updated");
-      } else {
-        const now = new Date().toISOString();
-        setDeals((current) => [{
-          ...values,
-          id: crypto.randomUUID(),
-          owner_id: DEMO_OWNER_ID,
-          created_at: now,
-          updated_at: now,
-          contact_id: null,
-          closed_at: values.stage === "closed_won" || values.stage === "closed_lost" ? now : null,
-          lost_reason: null,
-          company,
-          contact: null,
-          tags: [],
-        }, ...current]);
-        toast.success("Opportunity created");
-      }
-      setEditing(null);
-    });
+  const saveDeal = async (values: DealFormValues) => {
+    const terminal = values.stage === "closed_won" || values.stage === "closed_lost";
+    const input = { ...values, contact_id: editing?.contact_id ?? null, closed_at: terminal ? editing?.closed_at ?? new Date().toISOString() : null, lost_reason: editing?.lost_reason ?? null };
+    if (editing) await collection.update(editing.id, input);
+    else await collection.create(input);
+    toast.success(editing ? "Opportunity updated" : "Opportunity created");
+    setEditing(null);
   };
 
-  const removeDeal = (deal: Deal) => {
-    const previous = deals;
-    setDeals((current) => current.filter((item) => item.id !== deal.id));
-    toast("Opportunity deleted", {
-      action: { label: "Undo", onClick: () => setDeals(previous) },
-    });
+  const removeDeal = async (deal: Deal) => {
+    if (!window.confirm(`Delete ${deal.name}? Its activities will also be deleted.`)) return;
+    await collection.remove(deal.id);
+    toast.success("Opportunity deleted");
   };
 
   return (
     <>
       <div className="mt-7 flex items-center gap-3">
         <div className="flex flex-1 gap-2 overflow-x-auto pb-1" aria-label="Filter by stage">
-          <button onClick={() => setStage("all")} className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-medium transition ${stage === "all" ? "bg-[#20211d] text-white" : "border border-[#dcded5] bg-white text-[#73756d] hover:bg-[#f8f8f4]"}`}>All deals <span className="ml-1 opacity-60">{deals.length}</span></button>
+          <button onClick={() => { setStage("all"); setPage(1); }} className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-medium transition ${stage === "all" ? "bg-[#20211d] text-white" : "border border-[#dcded5] bg-white text-[#73756d] hover:bg-[#f8f8f4]"}`}>All deals <span className="ml-1 opacity-60">{collection.items.length}</span></button>
           {DEAL_STAGES.slice(0, 5).map((item) => {
-            const count = deals.filter((deal) => deal.stage === item.value).length;
-            return <button key={item.value} onClick={() => setStage(item.value)} className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-medium transition ${stage === item.value ? "bg-[#20211d] text-white" : "border border-[#dcded5] bg-white text-[#73756d] hover:bg-[#f8f8f4]"}`}>{item.label} <span className="ml-1 opacity-60">{count}</span></button>;
+            const count = collection.items.filter((deal) => deal.stage === item.value).length;
+            return <button key={item.value} onClick={() => { setStage(item.value); setPage(1); }} className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-medium transition ${stage === item.value ? "bg-[#20211d] text-white" : "border border-[#dcded5] bg-white text-[#73756d] hover:bg-[#f8f8f4]"}`}>{item.label} <span className="ml-1 opacity-60">{count}</span></button>;
           })}
         </div>
         <Button onClick={() => { setEditing(null); setDialogOpen(true); }} className="hidden sm:inline-flex"><Plus className="size-4" /> New deal</Button>
       </div>
 
       <Card className="mt-3 overflow-hidden">
-        <div className="flex items-center border-b border-[#e3e4dd] pr-3">
-          <div className="flex-1"><ListToolbar query={query} onQueryChange={setQuery} placeholder="Search opportunities..." /></div>
-          <div className="hidden items-center rounded-lg border border-[#dedfd8] p-0.5 sm:flex">
-            <Button size="icon" variant="ghost" aria-label="List view" className="size-7 bg-[#edeee8] text-black"><List className="size-3.5" /></Button>
-            <Button size="icon" variant="ghost" aria-label="Board view" className="size-7"><Kanban className="size-3.5" /></Button>
-          </div>
-        </div>
+        <div className="border-b border-[#e3e4dd]"><ListToolbar query={query} onQueryChange={(value) => { setQuery(value); setPage(1); }} placeholder="Search opportunities..." /></div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[980px] text-left">
             <thead><tr className="border-b border-[#e6e7e0] bg-[#fafaf7] text-[10px] font-semibold uppercase tracking-wider text-[#8b8d84]">
-              <th className="px-5 py-3">Opportunity</th><th className="px-5 py-3">Stage</th><th className="px-5 py-3">Close date</th><th className="px-5 py-3">Source</th><th className="px-5 py-3 text-right"><span className="inline-flex items-center gap-1">Value <ArrowDownUp className="size-3" /></span></th><th className="w-24 px-3 py-3"><span className="sr-only">Actions</span></th>
+              <th className="px-5 py-3">Opportunity</th><th className="px-5 py-3">Stage</th><th className="px-5 py-3">Close date</th><th className="px-5 py-3">Source</th><th className="px-5 py-3 text-right"><button onClick={() => { setValueDescending((value) => !value); setPage(1); }} className="inline-flex items-center gap-1">Value <ArrowDownUp className="size-3" /></button></th><th className="w-24 px-3 py-3"><span className="sr-only">Actions</span></th>
             </tr></thead>
             <tbody className="divide-y divide-[#ecece6]">
               <AnimatePresence initial={false}>
-                {filtered.map((deal) => (
+                {visible.map((deal) => (
                   <motion.tr layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, x: -12 }} key={deal.id} className="group text-[12px] hover:bg-[#fafaf7]">
                     <td className="px-5 py-4">
                       <button className="text-left" onClick={() => { setEditing(deal); setDialogOpen(true); }}>
@@ -113,7 +94,7 @@ export function DealsWorkspace({ initialDeals, companies }: { initialDeals: Deal
                     <td className="px-3 py-4">
                       <div className="flex justify-end opacity-0 transition group-hover:opacity-100 focus-within:opacity-100">
                         <Button variant="ghost" size="icon" aria-label={`Edit ${deal.name}`} onClick={() => { setEditing(deal); setDialogOpen(true); }}><MoreHorizontal className="size-4" /></Button>
-                        <Button variant="ghost" size="icon" aria-label={`Delete ${deal.name}`} onClick={() => removeDeal(deal)} className="hover:text-red-500"><Trash2 className="size-3.5" /></Button>
+                        <Button variant="ghost" size="icon" aria-label={`Delete ${deal.name}`} onClick={() => void removeDeal(deal)} className="hover:text-red-500"><Trash2 className="size-3.5" /></Button>
                       </div>
                     </td>
                   </motion.tr>
@@ -123,10 +104,10 @@ export function DealsWorkspace({ initialDeals, companies }: { initialDeals: Deal
           </table>
         </div>
         {filtered.length === 0 ? <div className="p-14 text-center"><p className="text-sm font-medium">No opportunities match</p><p className="mt-1 text-xs text-[#85877e]">Clear the filters or create a new deal.</p></div> : null}
-        <div className="flex items-center justify-between border-t border-[#e6e7e0] px-5 py-3 text-[10px] text-[#8b8d84]"><span>{filtered.length} opportunities</span><div className="flex items-center gap-2"><Button variant="outline" size="sm" disabled>Previous</Button><span>1 / 1</span><Button variant="outline" size="sm" disabled>Next</Button></div></div>
+        <div className="flex items-center justify-between border-t border-[#e6e7e0] px-5 py-3 text-[10px] text-[#8b8d84]"><span>{filtered.length} opportunities</span><div className="flex items-center gap-2"><Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage((value) => value - 1)}>Previous</Button><span>{page} / {totalPages}</span><Button variant="outline" size="sm" disabled={page === totalPages} onClick={() => setPage((value) => value + 1)}>Next</Button></div></div>
       </Card>
 
-      <DealDialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) setEditing(null); }} deal={editing} companies={companies} onSubmit={saveDeal} />
+      <DealDialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) setEditing(null); }} deal={editing} companies={companies} pending={collection.pending} onSubmit={saveDeal} />
       <Button onClick={() => { setEditing(null); setDialogOpen(true); }} className="fixed bottom-6 right-6 z-20 shadow-lg lg:hidden"><Plus className="size-4" /> New deal</Button>
     </>
   );

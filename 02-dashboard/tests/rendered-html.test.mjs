@@ -13,11 +13,33 @@ async function source(relativePath) {
 test("ships product metadata and no starter preview marker", async () => {
   const layout = await source("app/layout.tsx");
   assert.match(layout, /PipelineOS/);
-  assert.match(layout, /AI-powered sales pipeline/);
+  assert.match(layout, /secure sales pipeline/);
   assert.doesNotMatch(layout, /codex-preview/);
   await assert.rejects(
     access(path.join(root, "app/_sites-preview/SkeletonPreview.tsx")),
   );
+});
+
+test("uses Supabase as the only CRM source of truth", async () => {
+  await assert.rejects(access(path.join(root, "lib/demo-data.ts")));
+  const loaders = await source("lib/data/loaders.ts");
+  assert.doesNotMatch(loaders, /demoCompanies|demoDeals|demoAnalytics/);
+  const service = await source("lib/data/service.ts");
+  assert.match(service, /async create\(/);
+  assert.match(service, /async update\(/);
+  assert.match(service, /async delete\(/);
+  assert.match(service, /dealTags: new OwnedRepository/);
+});
+
+test("includes the complete email authentication lifecycle", async () => {
+  const login = await source("components/auth/login-form.tsx");
+  assert.match(login, /signInWithPassword/);
+  assert.match(login, /signUp/);
+  assert.match(login, /resetPasswordForEmail/);
+  const sidebar = await source("components/layout/sidebar.tsx");
+  assert.match(sidebar, /signOut/);
+  await access(path.join(root, "app/auth/reset/page.tsx"));
+  await access(path.join(root, "proxy.ts"));
 });
 
 test("includes every required product route", async () => {
@@ -85,4 +107,12 @@ test("keeps analytics in PostgreSQL", async () => {
     /create or replace function public\.get_dashboard_analytics/,
   );
   assert.match(schema, /security invoker/);
+});
+
+test("global search is authenticated and server-computed", async () => {
+  const migration = await source("supabase/migrations/202607240006_authenticated_global_search.sql");
+  assert.match(migration, /security invoker/);
+  assert.match(migration, /owner_id = auth\.uid\(\)/);
+  assert.match(migration, /revoke all on function public\.search_workspace\(text\) from anon/);
+  assert.match(migration, /grant execute on function public\.search_workspace\(text\) to authenticated/);
 });

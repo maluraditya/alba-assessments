@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
-import { ArrowUpRight, Download, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { RevenueChart } from "@/components/charts/revenue-chart";
 import { PipelineChart } from "@/components/charts/pipeline-chart";
 import { SourceChart } from "@/components/charts/source-chart";
@@ -17,15 +16,15 @@ export default async function AnalyticsPage() {
   const totalActivities = activitiesCompleted.reduce((sum, item) => sum + item.completed, 0);
   return (
     <AppShell><div className="mx-auto max-w-[1540px] px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
-      <PageHeader eyebrow="Intelligence" title="Analytics" description="Server-aggregated revenue intelligence, without exporting your pipeline to a spreadsheet." actions={<Button variant="outline"><Download className="size-4" /> Export report</Button>} />
+      <PageHeader eyebrow="Intelligence" title="Analytics" description="Server-aggregated revenue intelligence, without exporting your pipeline to a spreadsheet." />
       <section className="mt-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {[
-          ["Weighted pipeline", formatCompactCurrency(metrics.pipelineValue), "+12.4%"],
-          ["Win rate", `${metrics.winRate}%`, "+4.2%"],
-          ["Avg. deal size", formatCompactCurrency(metrics.averageDealSize), "+8.7%"],
-          ["Activities done", totalActivities.toString(), "+16.0%"],
-        ].map(([label, value, delta]) => (
-          <Card key={label} className="p-5"><p className="text-[11px] text-[#7c7e75]">{label}</p><div className="mt-4 flex items-end justify-between"><p className="text-2xl font-semibold tracking-[-0.04em]">{value}</p><span className="flex items-center text-[10px] font-medium text-[#719d2c]">{delta}<ArrowUpRight className="size-3" /></span></div></Card>
+          ["Open pipeline", formatCompactCurrency(metrics.pipelineValue)],
+          ["Win rate", `${metrics.winRate}%`],
+          ["Avg. deal size", formatCompactCurrency(metrics.averageDealSize)],
+          ["Activities done", totalActivities.toString()],
+        ].map(([label, value]) => (
+          <Card key={label} className="p-5"><p className="text-[11px] text-[#7c7e75]">{label}</p><div className="mt-4 flex items-end justify-between"><p className="text-2xl font-semibold tracking-[-0.04em]">{value}</p><span className="text-[10px] font-medium text-[#719d2c]">Live</span></div></Card>
         ))}
       </section>
       <section className="mt-4 grid gap-4 xl:grid-cols-[1.5fr_1fr]">
@@ -36,10 +35,10 @@ export default async function AnalyticsPage() {
         <Card className="p-6"><p className="text-sm font-semibold">Acquisition mix</p><p className="mt-1 text-[11px] text-[#85877e]">Deal creation by source</p><SourceChart data={dealsBySource} /><div className="grid grid-cols-2 gap-2">{dealsBySource.map((item, index) => <div key={item.source} className="flex items-center gap-2 text-[10px] text-[#6f7169]"><span className="size-2 rounded-full" style={{ background: ["#25261f", "#9aca43", "#c8b6ff", "#f2bd5a", "#8aa1b1"][index] }} />{item.source}<span className="ml-auto font-medium">{item.deals}</span></div>)}</div></Card>
         <Card className="relative overflow-hidden bg-[#171815] p-6 text-white">
           <div className="absolute -right-16 -top-16 size-52 rounded-full bg-[#d8ff72]/10 blur-3xl" />
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.06] px-2.5 py-1 text-[10px] text-[#c5c7bf]"><Sparkles className="size-3 text-[#d8ff72]" /> AI forecast brief</span>
-          <p className="mt-8 max-w-xl font-serif text-3xl leading-[1.05] tracking-[-0.03em]">You’re on track to finish 14% above the quarter target.</p>
-          <p className="mt-5 max-w-xl text-[12px] leading-6 text-[#91938b]">Momentum is concentrated in Northstar and Morrow. Pulling Arcwell into proposal before August 7 protects the upside if Northstar slips.</p>
-          <div className="mt-8 grid gap-3 sm:grid-cols-3">{[["3.1×", "Pipeline coverage"], ["74 days", "Avg. sales cycle"], ["$62k", "Revenue at risk"]].map(([value, label]) => <div key={label} className="rounded-xl border border-white/[0.08] bg-white/[0.04] p-4"><p className="text-lg font-medium">{value}</p><p className="mt-1 text-[9px] uppercase tracking-wider text-[#74766f]">{label}</p></div>)}</div>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.06] px-2.5 py-1 text-[10px] text-[#c5c7bf]"><Sparkles className="size-3 text-[#d8ff72]" /> Pipeline brief</span>
+          <p className="mt-8 max-w-xl font-serif text-3xl leading-[1.05] tracking-[-0.03em]">{metrics.openDeals} active opportunities represent {formatCompactCurrency(metrics.pipelineValue)} in open pipeline.</p>
+          <p className="mt-5 max-w-xl text-[12px] leading-6 text-[#91938b]">This summary is generated from the authenticated analytics RPC. Closed opportunities currently convert at {metrics.winRate}%, and {metrics.overdueActivities} activities need attention.</p>
+          <div className="mt-8 grid gap-3 sm:grid-cols-3">{[[formatCompactCurrency(metrics.wonRevenue), "Revenue won this month"], [metrics.openDeals.toString(), "Open opportunities"], [metrics.overdueActivities.toString(), "Overdue activities"]].map(([value, label]) => <div key={label} className="rounded-xl border border-white/[0.08] bg-white/[0.04] p-4"><p className="text-lg font-medium">{value}</p><p className="mt-1 text-[9px] uppercase tracking-wider text-[#74766f]">{label}</p></div>)}</div>
         </Card>
       </section>
     </div></AppShell>

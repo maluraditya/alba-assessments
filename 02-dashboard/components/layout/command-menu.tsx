@@ -6,7 +6,9 @@ import { Command } from "cmdk";
 import * as Dialog from "@radix-ui/react-dialog";
 import { ArrowRight, Search } from "lucide-react";
 import { NAV_ITEMS } from "@/lib/constants";
-import { demoCompanies, demoContacts, demoDeals } from "@/lib/demo-data";
+import { createClient } from "@/lib/supabase/client";
+
+interface SearchResult { id: string; type: "company" | "contact" | "deal"; title: string; subtitle: string; href: string }
 
 export function CommandMenu({
   open,
@@ -17,6 +19,8 @@ export function CommandMenu({
 }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const listener = (event: KeyboardEvent) => {
@@ -28,6 +32,22 @@ export function CommandMenu({
     document.addEventListener("keydown", listener);
     return () => document.removeEventListener("keydown", listener);
   }, [onOpenChange, open]);
+
+  useEffect(() => {
+    if (query.trim().length < 2) {
+      return;
+    }
+    let active = true;
+    const timer = window.setTimeout(async () => {
+      setLoading(true);
+      const { data, error } = await createClient().rpc("search_workspace", { search_query: query.trim() });
+      if (active) {
+        setResults(error ? [] : data as SearchResult[]);
+        setLoading(false);
+      }
+    }, 200);
+    return () => { active = false; window.clearTimeout(timer); };
+  }, [query]);
 
   const select = (path: string) => {
     router.push(path);
@@ -46,14 +66,14 @@ export function CommandMenu({
               <Search className="size-4 text-[#777970]" />
               <Command.Input
                 value={query}
-                onValueChange={setQuery}
+                onValueChange={(value) => { setQuery(value); if (value.trim().length < 2) setResults([]); }}
                 placeholder="Search companies, contacts, deals..."
                 className="h-14 w-full bg-transparent px-3 text-sm outline-none placeholder:text-[#676961]"
               />
               <kbd className="rounded border border-white/10 px-1.5 py-0.5 text-[10px] text-[#777970]">ESC</kbd>
             </div>
             <Command.List className="max-h-[420px] overflow-y-auto p-2">
-              <Command.Empty className="p-8 text-center text-sm text-[#85877f]">No results found.</Command.Empty>
+              <Command.Empty className="p-8 text-center text-sm text-[#85877f]">{loading ? "Searching…" : query.length < 2 ? "Type at least two characters." : "No results found."}</Command.Empty>
               <Command.Group heading="Navigate" className="px-2 py-2 text-[10px] font-semibold uppercase tracking-wider text-[#66685f]">
                 {NAV_ITEMS.map((item) => {
                   const Icon = item.icon;
@@ -72,24 +92,7 @@ export function CommandMenu({
                 })}
               </Command.Group>
               <Command.Group heading="Records" className="px-2 py-2 text-[10px] font-semibold uppercase tracking-wider text-[#66685f]">
-                {demoCompanies.map((company) => (
-                  <Command.Item key={company.id} value={`company ${company.name} ${company.domain}`} onSelect={() => select("/companies")} className="mt-1 cursor-pointer rounded-lg px-3 py-2.5 text-[13px] normal-case text-[#c8c9c3] data-[selected=true]:bg-white/[0.08]">
-                    <span className="text-white">{company.name}</span>
-                    <span className="ml-2 text-[#686a63]">Company</span>
-                  </Command.Item>
-                ))}
-                {demoContacts.map((contact) => (
-                  <Command.Item key={contact.id} value={`contact ${contact.first_name} ${contact.last_name} ${contact.email}`} onSelect={() => select("/contacts")} className="mt-1 cursor-pointer rounded-lg px-3 py-2.5 text-[13px] normal-case text-[#c8c9c3] data-[selected=true]:bg-white/[0.08]">
-                    <span className="text-white">{contact.first_name} {contact.last_name}</span>
-                    <span className="ml-2 text-[#686a63]">Contact</span>
-                  </Command.Item>
-                ))}
-                {demoDeals.map((deal) => (
-                  <Command.Item key={deal.id} value={`deal ${deal.name} ${deal.company?.name}`} onSelect={() => select("/deals")} className="mt-1 cursor-pointer rounded-lg px-3 py-2.5 text-[13px] normal-case text-[#c8c9c3] data-[selected=true]:bg-white/[0.08]">
-                    <span className="text-white">{deal.name}</span>
-                    <span className="ml-2 text-[#686a63]">Deal</span>
-                  </Command.Item>
-                ))}
+                {results.map((result) => <Command.Item key={`${result.type}-${result.id}`} value={`${result.type} ${result.title} ${result.subtitle}`} onSelect={() => select(result.href)} className="mt-1 cursor-pointer rounded-lg px-3 py-2.5 text-[13px] normal-case text-[#c8c9c3] data-[selected=true]:bg-white/[0.08]"><span className="text-white">{result.title}</span><span className="ml-2 text-[#686a63]">{result.type}</span></Command.Item>)}
               </Command.Group>
             </Command.List>
           </Command>

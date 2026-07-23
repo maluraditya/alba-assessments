@@ -1,13 +1,28 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Bell, ChevronsUpDown, HelpCircle, Sparkles } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { Bell, HelpCircle, LogOut, Sparkles } from "lucide-react";
+import { useEffect, useState } from "react";
 import { NAV_ITEMS } from "@/lib/constants";
 import { cn, initials } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
 
 export function Sidebar() {
   const path = usePathname();
+  const router = useRouter();
+  const [account, setAccount] = useState({ name: "Workspace user", email: "" });
+  useEffect(() => {
+    const client = createClient();
+    void client.auth.getUser().then(({ data }) => {
+      if (data.user) setAccount({ name: String(data.user.user_metadata.full_name || data.user.email?.split("@")[0] || "Workspace user"), email: data.user.email ?? "" });
+    });
+  }, []);
+  async function signOut() {
+    await createClient().auth.signOut();
+    router.replace("/login");
+    router.refresh();
+  }
   return (
     <aside className="fixed inset-y-0 left-0 z-30 hidden w-[244px] flex-col border-r border-white/[0.07] bg-[#10110f] text-white lg:flex">
       <div className="flex h-16 items-center gap-2.5 px-5">
@@ -72,16 +87,16 @@ export function Sidebar() {
             <HelpCircle className="size-4" />
           </button>
         </div>
-        <button className="flex w-full items-center gap-3 rounded-lg p-2 text-left hover:bg-white/[0.05]" aria-label="Open account menu">
+        <div className="flex w-full items-center gap-3 rounded-lg p-2 text-left">
           <span className="grid size-8 place-items-center rounded-full bg-[#c8b6ff] text-xs font-semibold text-[#24201f]">
-            {initials("Alex Morgan")}
+            {initials(account.name)}
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-xs font-medium text-white">Alex Morgan</span>
-            <span className="block truncate text-[10px] text-[#6f716a]">alex@acme.co</span>
+            <span className="block truncate text-xs font-medium text-white">{account.name}</span>
+            <span className="block truncate text-[10px] text-[#6f716a]">{account.email}</span>
           </span>
-          <ChevronsUpDown className="size-3.5 text-[#66685f]" />
-        </button>
+          <button onClick={signOut} className="rounded-md p-2 text-[#777970] hover:bg-white/[0.06] hover:text-white" aria-label="Sign out"><LogOut className="size-3.5" /></button>
+        </div>
       </div>
     </aside>
   );

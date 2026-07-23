@@ -18,13 +18,15 @@ flowchart LR
   DB --> RPC["Dashboard analytics RPC"]
   VIEWS --> API
   RPC --> API
+  CC --> SEARCH["Authenticated search RPC"]
+  SEARCH --> RLS
 ```
 
 ## Frontend
 
 - Server Components own the default page composition and initial reads.
-- Client Components are limited to workflows that need interaction: command
-  search, filtering, sorting, forms, optimistic writes, and charts.
+- Client Components are limited to workflows that need interaction: authenticated
+  command search, filtering, sorting, forms, optimistic writes, and charts.
 - Suspense-ready boundaries and skeleton primitives support streaming without
   forcing the whole application into client rendering.
 - Reusable shell, cards, buttons, badges, toolbars, charts, forms, and
@@ -36,7 +38,7 @@ flowchart LR
 operation first verifies the Supabase user. The browser receives only the
 anonymous project key; PostgreSQL RLS remains the authority for authorization.
 
-The repository never adds inline SQL. Database behavior belongs in versioned
+The application never adds inline SQL. Database behavior belongs in versioned
 migrations under `supabase/migrations/`.
 
 ## Analytics
@@ -58,4 +60,13 @@ Views use `security_invoker = true`, preserving table RLS.
 - Tables paginate with bounded ranges; production defaults to 20 records.
 - Joins are selected intentionally through explicit relationship projections.
 - Analytics are aggregated near the data and returned in a single payload.
-- Mutations use optimistic local updates with undo for destructive actions.
+- Mutations update the Supabase source of truth. Optimistic updates and deletes
+  roll back when the database rejects a request.
+
+## Authentication lifecycle
+
+The browser uses Supabase email/password authentication. Sign-up includes the
+profile display name and confirmation callback; the proxy refreshes session
+cookies; protected Server Components verify the user before reading data;
+password recovery returns through the callback to the reset page; and sign-out
+clears the session before returning to login.

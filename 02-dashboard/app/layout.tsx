@@ -39,7 +39,7 @@ export async function generateMetadata(): Promise<Metadata> {
       template: "%s · PipelineOS",
     },
     description:
-      "A modern AI-powered sales pipeline workspace for focused revenue teams.",
+      "A modern, secure sales pipeline workspace for focused revenue teams.",
     icons: {
       icon: "/favicon.svg",
       shortcut: "/favicon.svg",

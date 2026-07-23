@@ -1,7 +1,8 @@
 # Two-account RLS verification
 
 Run these tests against a disposable local or staging Supabase project after
-applying both migrations and `seed.sql`.
+applying migrations and `seed.sql`. The hosted assessment migrations create
+the same two isolated workspaces.
 
 ## Accounts
 
@@ -29,5 +30,17 @@ applying both migrations and `seed.sql`.
 Account B can create and manage its own records but cannot observe, mutate,
 delete, aggregate, or reference any Account A record.
 
-This repository includes the deterministic test procedure but cannot claim a
-live pass until it is run against the target Supabase project.
+## Hosted assessment evidence
+
+The production assessment project is checked through the authenticated REST
+API after migrations deploy:
+
+- Account A can read its five companies and cannot read Account B's isolation
+  test company by UUID.
+- Account B can read its single isolation test company and cannot read any of
+  Account A's five companies, including direct UUID requests.
+- Anonymous inserts return PostgreSQL error `42501`.
+- Anonymous analytics and search RPC calls return HTTP `401`.
+- Cross-owner activity and deal-tag writes are rejected by ownership triggers.
+
+Re-run this test after any policy, grant, relationship, or analytics migration.

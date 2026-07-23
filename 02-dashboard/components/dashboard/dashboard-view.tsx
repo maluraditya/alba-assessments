@@ -11,24 +11,25 @@ import {
 } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/layout/page-header";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MetricCard } from "./metric-card";
 import { RevenueChart } from "@/components/charts/revenue-chart";
 import { PipelineChart } from "@/components/charts/pipeline-chart";
-import type { Activity, AnalyticsPayload, Deal } from "@/lib/types";
+import type { Activity, AnalyticsPayload, Deal, Profile } from "@/lib/types";
 import { formatCompactCurrency } from "@/lib/utils";
 
-export function DashboardView({ analytics, deals, activities }: { analytics: AnalyticsPayload; deals: Deal[]; activities: Activity[] }) {
+export function DashboardView({ analytics, deals, activities, profile }: { analytics: AnalyticsPayload; deals: Deal[]; activities: Activity[]; profile?: Profile }) {
   const { metrics, monthlyRevenue, pipelineByStage } = analytics;
+  const firstName = profile?.full_name?.split(" ")[0] || "there";
+  const today = new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric" }).format(new Date());
   return (
     <AppShell>
       <div className="mx-auto max-w-[1540px] px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
         <PageHeader
-          eyebrow="Thursday, July 24"
-          title="Good morning, Alex."
-          description="Here’s the pulse of your pipeline. Three deals need attention before the week closes."
+          eyebrow={today}
+          title={`Good morning, ${firstName}.`}
+          description={`Here’s the live pulse of your pipeline. ${metrics.openDeals} active ${metrics.openDeals === 1 ? "deal" : "deals"} and ${metrics.overdueActivities} overdue ${metrics.overdueActivities === 1 ? "activity" : "activities"}.`}
           actions={
             <>
               <Link href="/analytics" className="hidden h-10 items-center justify-center rounded-lg border border-[#dedfd8] bg-white px-4 text-sm font-medium text-[#22231f] transition hover:bg-[#f5f5f1] focus-visible:ring-2 focus-visible:ring-[#d8ff72] sm:inline-flex">
@@ -45,7 +46,7 @@ export function DashboardView({ analytics, deals, activities }: { analytics: Ana
         <section className="mt-9 grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Key sales metrics">
           <MetricCard label="Open pipeline" value={formatCompactCurrency(metrics.pipelineValue)} helper="from last month" delta={metrics.pipelineDelta} icon={TrendingUp} />
           <MetricCard label="Revenue won" value={formatCompactCurrency(metrics.wonRevenue)} helper="this month" delta={metrics.revenueDelta} icon={CircleDollarSign} />
-          <MetricCard label="Win rate" value={`${metrics.winRate}%`} helper="across closed deals" delta={4.2} icon={Target} />
+          <MetricCard label="Win rate" value={`${metrics.winRate}%`} helper="across closed deals" icon={Target} />
           <MetricCard label="Average deal" value={formatCompactCurrency(metrics.averageDealSize)} helper={`${metrics.openDeals} active opportunities`} icon={CircleGauge} />
         </section>
 
@@ -54,9 +55,9 @@ export function DashboardView({ analytics, deals, activities }: { analytics: Ana
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm font-semibold tracking-[-0.02em]">Revenue momentum</p>
-                <p className="mt-1 text-[11px] text-[#85877e]">Closed-won revenue against monthly target</p>
+                <p className="mt-1 text-[11px] text-[#85877e]">Closed-won revenue by month</p>
               </div>
-              <Badge className="bg-[#eff7dd] text-[#5e7e26]">+18.1% MoM</Badge>
+              <Badge className="bg-[#eff7dd] text-[#5e7e26]">Live</Badge>
             </div>
             <div className="mt-5">
               <RevenueChart data={monthlyRevenue} />
@@ -121,7 +122,7 @@ export function DashboardView({ analytics, deals, activities }: { analytics: Ana
                   <div className="min-w-0">
                     <p className="truncate text-[12px] font-medium">{activity.title}</p>
                     <p className="mt-1 truncate text-[10px] text-[#8a8c83]">{activity.deal?.name}</p>
-                    <p className="mt-2 text-[10px] font-medium text-[#67724e]">Today · {["3:30 PM", "Tomorrow", "Tomorrow", "Saturday"][index]}</p>
+                    <p className="mt-2 text-[10px] font-medium text-[#67724e]">{activity.due_at ? new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(activity.due_at)) : "No due date"}</p>
                   </div>
                 </div>
               ))}
@@ -135,15 +136,13 @@ export function DashboardView({ analytics, deals, activities }: { analytics: Ana
               <Handshake className="size-4" />
             </span>
             <div>
-              <p className="text-sm font-medium">Pipeline health is strong</p>
+              <p className="text-sm font-medium">Pipeline snapshot</p>
               <p className="mt-1 max-w-xl text-[11px] leading-5 text-[#8f9189]">
-                Your weighted pipeline covers 3.1× next month’s target. Northstar is the largest opportunity at risk of slipping.
+                {formatCompactCurrency(metrics.pipelineValue)} is currently open across {metrics.openDeals} opportunities, with a {metrics.winRate}% win rate on closed deals.
               </p>
             </div>
           </div>
-          <Button variant="secondary" size="sm" className="mt-4 sm:mt-0">
-            Review forecast <ArrowRight className="size-3" />
-          </Button>
+          <Link href="/analytics" className="mt-4 inline-flex h-8 items-center gap-2 rounded-lg bg-white px-3 text-xs font-medium text-[#20211d] sm:mt-0">Review analytics <ArrowRight className="size-3" /></Link>
         </section>
       </div>
     </AppShell>

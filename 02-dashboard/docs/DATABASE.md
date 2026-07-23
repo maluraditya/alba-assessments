@@ -46,3 +46,16 @@ The `get_dashboard_analytics` RPC returns:
 
 The frontend treats this payload as chart-ready data and does not recompute
 business metrics in React.
+
+## Authenticated search
+
+`search_workspace(search_query)` searches the current user's companies,
+contacts, and deals and returns at most twelve navigation-ready results. It is
+`SECURITY INVOKER`, explicitly filters by `auth.uid()`, and is executable only
+by the `authenticated` database role.
+
+## Storage and edge functions
+
+PipelineOS does not currently require file storage or Edge Functions. No
+storage buckets are created. Structured CRM data and aggregate functions remain
+in PostgreSQL; this keeps the deployed surface minimal and auditable.

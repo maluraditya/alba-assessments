@@ -1,67 +1,72 @@
 # PipelineOS
 
-Modern AI-powered sales pipeline dashboard built with Next.js, TypeScript,
-Tailwind CSS, Supabase, Recharts, Framer Motion, React Hook Form, and Zod.
+PipelineOS is a production-oriented sales pipeline dashboard built with Next.js, TypeScript, Tailwind CSS, Supabase, Recharts, Framer Motion, React Hook Form, and Zod.
 
-PipelineOS is designed as a focused revenue workspace rather than a generic
-admin template. It includes authenticated, owner-isolated data; normalized CRM
-entities; optimistic deal workflows; global search; responsive analytics; and
-server-side PostgreSQL aggregation.
+It is a focused CRM workspace rather than a generic admin template: authenticated users manage companies, contacts, deals, activities, and tags; PostgreSQL Row Level Security isolates every workspace; and PostgreSQL produces chart-ready analytics through authenticated functions and security-invoker views.
 
-## Product surfaces
+## Features
 
-- Dashboard with revenue, pipeline, win-rate, and activity signals
-- Companies, contacts, deals, and activities workspaces
-- Deal creation, editing, deletion, filtering, sorting, and pagination UI
-- Server-aggregated analytics and AI forecast briefing surface
-- Global command menu (`⌘K` / `Ctrl+K`)
-- Email/password authentication
-- Responsive navigation, keyboard focus, reduced-motion support, loading and
-  empty states
-- User settings and data export affordances
+- Complete Supabase-backed create, read, update, and delete workflows
+- Optimistic updates and deletes with rollback on request failure
+- Email/password sign-up, confirmation callback, sign-in, sign-out, and password recovery
+- Owner-isolated RLS across all seven application tables
+- Cross-owner relationship validation for every foreign-key workflow
+- Server-computed revenue, pipeline, source, conversion, and activity analytics
+- Authenticated global search through a PostgreSQL RPC
+- Responsive charts, filters, sorting, pagination, dialogs, toasts, and keyboard navigation
+- Server Components for initial reads, bounded queries, loading states, empty states, and error recovery
+- Authenticated JSON export containing only the current user's rows
+
+## Why Supabase
+
+Supabase provides PostgreSQL relationships, SQL analytics, email authentication, Row Level Security, migration-based infrastructure, and a production API in one service. The browser receives only the publishable key; PostgreSQL remains the authorization boundary.
 
 ## Local setup
 
-1. Install dependencies with `npm install`.
-2. Copy `.env.example` to `.env.local`.
-3. Create a Supabase project and set the project URL and anonymous key.
-4. Apply files in `supabase/migrations/` in timestamp order.
-5. For local Supabase, run the seed in `supabase/seed.sql`.
-6. Start the app with `npm run dev`.
+1. Install Node.js 22.13 or newer.
+2. Run `npm install`.
+3. Copy `.env.example` to `.env.local` and add the Supabase project URL and publishable key.
+4. Run `supabase start` and `supabase db reset`, or apply every migration in `supabase/migrations/` in timestamp order.
+5. Run `npm run dev`.
 
-Without Supabase environment values the interface runs in a read-only demo
-configuration with realistic sample data. Production CRUD uses the
-authenticated repositories in `lib/data/service.ts`.
+The application does not fall back to local JSON or mock CRM records. Supabase configuration and an authenticated session are required.
 
-## Demo accounts
+## Demo data
 
-The local seed creates two accounts for RLS verification:
+`supabase/seed.sql` is deterministic development/test data for local or disposable environments. The hosted assessment project also contains an isolated synthetic workspace created by a versioned migration. Demo records live in Supabase and are protected by the same RLS policies as every other workspace; no demo dataset is bundled into the frontend.
 
-- `alex@pipelineos.demo`
-- `sam@pipelineos.demo`
-- Password: `PipelineOS-demo-2026!`
+Remove assessment accounts and seed migrations before adapting this repository for real customer data.
 
-Do not use the demo credentials in a public production project.
+## Quality commands
 
-## Scripts
-
-- `npm run dev` — local development
-- `npm run build` — production build
-- `npm run lint` — static analysis
-- `npm test` — build and rendered HTML checks
+- `npm run typecheck` — strict TypeScript verification
+- `npm run lint` — ESLint and React rules
+- `npm test` — production build and repository contract tests
+- `npm run check` — complete local quality gate
 
 ## Documentation
 
-- [Database and relationships](docs/DATABASE.md)
+- [Requirements checklist](docs/REQUIREMENTS.md)
+- [Database schema](docs/DATABASE.md)
 - [Entity relationship diagram](docs/ERD.md)
 - [Architecture](docs/ARCHITECTURE.md)
-- [RLS two-account test](docs/SECURITY_TEST.md)
+- [RLS verification](docs/SECURITY_TEST.md)
 - [Deployment guide](docs/DEPLOYMENT.md)
+
+## Repository layout
+
+```text
+app/                 App Router pages, auth callbacks, loading and errors
+components/          Feature, layout, chart, form, and UI components
+hooks/               Reusable optimistic collection state
+lib/data/            Authenticated repositories, loaders, and analytics client
+lib/supabase/        Browser and server Supabase clients
+supabase/migrations/ Versioned schema, RLS, RPC, fixes, and assessment seed
+supabase/seed.sql    Deterministic local test data
+docs/                Schema, architecture, security, deployment, checklist
+tests/               Build-time repository contract tests
+```
 
 ## Security model
 
-Every persisted entity carries `owner_id`. All seven tables have RLS enabled
-with explicit select, insert, update, and delete policies. Relationship
-validation triggers prevent cross-owner foreign-key references. Analytics views
-use `security_invoker`, and the dashboard RPC is executable only by the
-`authenticated` role.
+Every persisted entity carries `owner_id`. Each table has explicit authenticated policies for select, insert, update, and delete using `auth.uid()`. Relationship triggers prevent cross-owner foreign-key references. Analytics and search use `SECURITY INVOKER`; execution is revoked from `PUBLIC` and `anon` and granted only to `authenticated`.
