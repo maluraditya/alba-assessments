@@ -1,14 +1,13 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { requireSupabaseConfig } from "./config";
 
 export async function createClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) {
-    throw new Error("Supabase is not configured.");
-  }
+  // Read request state first so Next.js never attempts to prerender an
+  // authenticated route during a production build.
   const cookieStore = await cookies();
-  return createServerClient(url, key, {
+  const { url, publishableKey } = requireSupabaseConfig();
+  return createServerClient(url, publishableKey, {
     cookies: {
       getAll() {
         return cookieStore.getAll();

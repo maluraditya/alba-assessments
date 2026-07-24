@@ -1,14 +1,11 @@
 import { redirect } from "next/navigation";
 import type { Activity, AnalyticsPayload, Company, Contact, Deal, Profile } from "@/lib/types";
 import { createClient } from "@/lib/supabase/server";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { getDashboardAnalytics } from "./analytics";
 import { repositories } from "./service";
 
-export const isSupabaseConfigured = () =>
-  Boolean(
-    process.env.NEXT_PUBLIC_SUPABASE_URL &&
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-  );
+export { isSupabaseConfigured };
 
 async function authenticatedRepositories() {
   const client = await createClient();

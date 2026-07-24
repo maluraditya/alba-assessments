@@ -50,8 +50,9 @@ Remove assessment accounts and seed migrations before adapting this repository f
 
 - `npm run typecheck` — strict TypeScript verification
 - `npm run lint` — ESLint and React rules
-- `npm test` — production build and repository contract tests
-- `npm run check` — complete local quality gate
+- `npm test` — Sites-compatible build and repository contract tests
+- `npm run build` — native Next.js/Vercel production build
+- `npm run check` — complete release gate, including both deployment targets
 
 ## Documentation
 

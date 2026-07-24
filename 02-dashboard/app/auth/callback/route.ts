@@ -7,7 +7,12 @@ export async function GET(request: Request) {
   const next = url.searchParams.get("next");
   if (code) {
     const supabase = await createClient();
-    await supabase.auth.exchangeCodeForSession(code);
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (error) {
+      const loginUrl = new URL("/login", url.origin);
+      loginUrl.searchParams.set("error", "auth_callback_failed");
+      return NextResponse.redirect(loginUrl);
+    }
   }
   const destination = next?.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
   return NextResponse.redirect(new URL(destination, url.origin));

@@ -32,6 +32,28 @@ test("keeps deployment config imports in committed source directories", async ()
   const vercelConfig = JSON.parse(await source("vercel.json"));
   assert.equal(vercelConfig.framework, "nextjs");
   assert.equal(vercelConfig.buildCommand, "npm run build");
+
+  const envExample = await source(".env.example");
+  assert.match(envExample, /NEXT_PUBLIC_SUPABASE_URL=/);
+  assert.match(envExample, /NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=/);
+  assert.doesNotMatch(envExample, /bnojswbhvmkdasvsiozn|sb_publishable_/);
+});
+
+test("keeps authenticated routes dynamic and centralizes Supabase configuration", async () => {
+  const layout = await source("app/layout.tsx");
+  assert.match(layout, /export const dynamic = "force-dynamic"/);
+  assert.match(layout, /export const revalidate = 0/);
+  assert.doesNotMatch(layout, /next\/font\/google/);
+
+  const serverClient = await source("lib/supabase/server.ts");
+  assert.ok(serverClient.indexOf("await cookies()") < serverClient.indexOf("requireSupabaseConfig()"));
+
+  const config = await source("lib/supabase/config.ts");
+  assert.match(config, /NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY/);
+  assert.match(config, /NEXT_PUBLIC_SUPABASE_ANON_KEY/);
+
+  const callback = await source("app/auth/callback/route.ts");
+  assert.match(callback, /auth_callback_failed/);
 });
 
 test("uses Supabase as the only CRM source of truth", async () => {

@@ -3,6 +3,9 @@
 :root {
   --background: #f4f4f0;
   --foreground: #20211d;
+  --font-geist-sans: Inter, Geist, "Helvetica Neue", Arial, ui-sans-serif, system-ui, sans-serif;
+  --font-geist-mono: "SFMono-Regular", Consolas, "Liberation Mono", ui-monospace, monospace;
+  --font-instrument-serif: "Iowan Old Style", Baskerville, "Times New Roman", ui-serif, serif;
 }
 
 @theme inline {

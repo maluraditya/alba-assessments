@@ -19,7 +19,13 @@ Supabase's hosted GitHub integration applies migrations but does not run `supaba
 Set these values in the hosting platform:
 
 - `NEXT_PUBLIC_SUPABASE_URL` — API URL such as `https://project-ref.supabase.co`, not the dashboard URL.
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY` — publishable/anonymous key.
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` — current Supabase publishable key (recommended).
+
+`NEXT_PUBLIC_SUPABASE_ANON_KEY` is also accepted for projects still using the
+legacy anonymous JWT key. Configure the values for both **Production** and
+**Preview** before triggering a deployment; public environment values are
+embedded into the browser bundle at build time, so changing them requires a
+redeploy.
 
 The publishable key is intentionally available to the browser. RLS is the authorization boundary. Never expose the service-role key.
 

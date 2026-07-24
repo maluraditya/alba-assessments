@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ArrowRight, LoaderCircle, MailCheck, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { Button } from "@/components/ui/button";
 
 export function LoginForm() {
@@ -13,7 +14,7 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [confirmationEmail, setConfirmationEmail] = useState<string | null>(null);
-  const configured = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+  const configured = isSupabaseConfigured();
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -103,11 +104,16 @@ export function LoginForm() {
 
   return (
     <form onSubmit={submit} className="mt-8">
+      {!configured ? (
+        <div className="mb-5 rounded-xl border border-amber-300/20 bg-amber-200/10 px-4 py-3 text-xs leading-5 text-amber-100" role="alert">
+          This deployment is missing its Supabase environment configuration. Add the project URL and publishable key, then redeploy.
+        </div>
+      ) : null}
       {mode === "signup" ? <label className="mb-4 block text-[11px] font-medium text-[#b6b8af]">Full name<input required value={fullName} onChange={(event) => setFullName(event.target.value)} placeholder="Alex Morgan" autoComplete="name" className={fieldClass} /></label> : null}
       <label className="block text-[11px] font-medium text-[#b6b8af]">Work email<input type="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@company.com" className={fieldClass} /></label>
       <label className="mt-4 block text-[11px] font-medium text-[#b6b8af]">Password<input type="password" minLength={8} required value={password} onChange={(event) => setPassword(event.target.value)} placeholder="8+ characters" autoComplete={mode === "login" ? "current-password" : "new-password"} className={fieldClass} /></label>
       {mode === "login" ? <button type="button" disabled={loading} onClick={resetPassword} className="mt-2 text-[11px] text-[#92958c] hover:text-white">Forgot password?</button> : null}
-      <Button type="submit" className="mt-6 w-full" size="lg" disabled={loading}>{loading ? <LoaderCircle className="size-4 animate-spin" /> : <>{mode === "login" ? "Sign in" : "Create account"} <ArrowRight className="size-4" /></>}</Button>
+      <Button type="submit" className="mt-6 w-full" size="lg" disabled={loading || !configured}>{loading ? <LoaderCircle className="size-4 animate-spin" /> : <>{mode === "login" ? "Sign in" : "Create account"} <ArrowRight className="size-4" /></>}</Button>
       <button type="button" onClick={() => setMode(mode === "login" ? "signup" : "login")} className="mt-4 w-full text-center text-[11px] text-[#82847c] hover:text-white">{mode === "login" ? "New to PipelineOS? Create an account" : "Already have an account? Sign in"}</button>
     </form>
   );
