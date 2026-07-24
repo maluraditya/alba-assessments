@@ -57,6 +57,21 @@ The implemented scope includes companies, contacts, deals, activities, tags, das
 - Monitored GitHub-triggered Vercel deployments through completion and confirmed the native production build succeeds even when environment variables are absent during build-time analysis.
 - Manually reviewed responsive layouts, empty states, loading skeletons, persistent sidebar navigation, chart tooltips, sign-up confirmation, login/logout, and password-recovery states.
 
+### Lighthouse results
+
+Lighthouse 12.8.2 was run three times against the `/login` route from the native Next.js production build using its default mobile profile. The table reports the median result so a single unusually fast or slow run does not determine the submission score.
+
+Scores are out of 100; Lighthouse considers scores of 90 or above to be in its highest, green rating band.
+
+| Category | Median score |
+| --- | ---: |
+| Performance | **95** |
+| Accessibility | **100** |
+| Best Practices | **96** |
+| SEO | **100** |
+
+Median lab metrics were approximately **0.8 s FCP**, **2.9 s LCP**, **130 ms Total Blocking Time**, **0 CLS**, and **1.5 s Speed Index**. The audit used the same compiled production output deployed by Vercel. The generated Vercel deployment URL currently requires Vercel authentication for unauthenticated visitors, so the audit was executed against the local production server rather than scoring Vercel's protection page.
+
 With more time, I would add Playwright coverage for complete browser-based authentication and CRUD flows, run those tests in CI against a disposable Supabase branch, and add automated accessibility checks.
 
 ## Known limitations
@@ -67,18 +82,18 @@ With more time, I would add Playwright coverage for complete browser-based authe
 - The product currently ships one polished light theme rather than light and dark modes.
 - The project does not yet include production error monitoring, alerting, point-in-time recovery configuration, or application-level rate-limit dashboards.
 - Authentication email delivery still depends on the Supabase email provider and its production SMTP configuration.
-- Lighthouse scores must be recorded against the final public production URL and added to the submission evidence.
+- The generated Vercel deployment URL is protected by Vercel authentication for unauthenticated visitors; external Lighthouse services can audit the hosted page after that protection is disabled.
 - Demo accounts and synthetic seed rows are assessment fixtures and must be removed before onboarding real customers.
 
 ## Time spent
 
-The initial assessment-ready build took approximately **4 hours**. Additional review-driven polish and production hardening took approximately **3 hours**, for roughly **7 hours total**.
+The initial assessment-ready build took approximately **3.5 hours**. Additional review-driven polish and production hardening took approximately **2 hours**, for roughly **5.5 hours total**.
 
-- Product scope, schema, and architecture: ~45 minutes
-- Supabase migrations, authentication, RLS, and seed workspaces: ~80 minutes
-- CRUD services, forms, search, and route implementation: ~85 minutes
-- SQL analytics, charts, and dashboard composition: ~75 minutes
-- Documentation and security verification: ~45 minutes
-- UI iteration, authentication UX, deployment diagnosis, and production hardening: ~90 minutes
+- Product scope, schema, and architecture: ~35 minutes
+- Supabase migrations, authentication, RLS, and seed workspaces: ~60 minutes
+- CRUD services, forms, search, and route implementation: ~65 minutes
+- SQL analytics, charts, and dashboard composition: ~60 minutes
+- Documentation and security verification: ~35 minutes
+- UI iteration, authentication UX, deployment diagnosis, and production hardening: ~75 minutes
 
 The extra time beyond the original assessment window went primarily into deployment compatibility, live security verification, and interface iteration rather than expanding the product scope.
