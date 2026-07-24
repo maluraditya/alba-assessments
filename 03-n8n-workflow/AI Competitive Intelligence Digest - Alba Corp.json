@@ -1,0 +1,1681 @@
+{
+  "name": "AI Competitive Intelligence Digest - Alba Corp",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "id": "471daddf-a350-49a1-bca7-a88d1ea1de3e",
+      "name": "Daily 9AM Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        832,
+        1616
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ---------------------------------------------------------------------------\n// COMPETITOR REGISTRY\n// The only place you edit to add/remove a competitor. Every downstream node\n// is generic and reads from these fields, so nothing else needs to change.\n// ---------------------------------------------------------------------------\nconst PRIMARY_COMPANY = 'OpenAI';\nconst LOOKBACK_HOURS  = 48;   // how far back an item may be dated\nconst MAX_ITEMS_PER_RUN = 40; // hard cap on LLM calls per run (cost guard)\n\nconst COMPETITORS = [\n  { company: 'Anthropic',       github_org: 'anthropics',      news_query: 'Anthropic Claude AI',\n    blog_rss: 'https://news.google.com/rss/search?q=site:anthropic.com&hl=en-US&gl=US&ceid=US:en' },\n  { company: 'Google DeepMind', github_org: 'google-deepmind', news_query: '\"Google DeepMind\"',\n    blog_rss: 'https://deepmind.google/blog/feed/basic/' },\n  { company: 'xAI',             github_org: 'xai-org',         news_query: 'xAI Grok',\n    blog_rss: 'https://news.google.com/rss/search?q=site:x.ai&hl=en-US&gl=US&ceid=US:en' },\n  { company: 'Perplexity',      github_org: 'perplexityai',    news_query: 'Perplexity AI',\n    blog_rss: 'https://news.google.com/rss/search?q=site:perplexity.ai&hl=en-US&gl=US&ceid=US:en' },\n  { company: 'Mistral AI',      github_org: 'mistralai',       news_query: '\"Mistral AI\"',\n    blog_rss: 'https://news.google.com/rss/search?q=site:mistral.ai&hl=en-US&gl=US&ceid=US:en' },\n  { company: 'Cohere',          github_org: 'cohere-ai',       news_query: 'Cohere AI',\n    blog_rss: 'https://news.google.com/rss/search?q=site:cohere.com&hl=en-US&gl=US&ceid=US:en' },\n];\n\nconst now = new Date();\nconst cutoffMs = now.getTime() - LOOKBACK_HOURS * 3600 * 1000;\n\nreturn COMPETITORS.map((c) => ({\n  json: {\n    ...c,\n    primary_company: PRIMARY_COMPANY,\n    lookback_hours: LOOKBACK_HOURS,\n    max_items_per_run: MAX_ITEMS_PER_RUN,\n    cutoff_iso: new Date(cutoffMs).toISOString(),\n    cutoff_epoch: Math.floor(cutoffMs / 1000),\n    run_date: now.toISOString().slice(0, 10),\n    run_started_at: now.toISOString(),\n  },\n}));"
+      },
+      "id": "abad51f3-ac45-4a0f-975b-7aeae859f135",
+      "name": "Build Competitor Registry",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        1616
+      ]
+    },
+    {
+      "parameters": {
+        "options": {
+          "reset": false
+        }
+      },
+      "id": "d7b35429-8799-491f-8f05-1765d21668aa",
+      "name": "Loop Over Competitors",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1344,
+        1616
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.blog_rss }}",
+        "options": {
+          "ignoreSSL": false
+        }
+      },
+      "id": "c90a8908-86c9-4cf9-8009-81368038f6c3",
+      "name": "Fetch Company Blog (RSS)",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.1,
+      "position": [
+        1808,
+        1360
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.github.com/orgs/{{ $json.github_org }}/repos",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "sort",
+              "value": "pushed"
+            },
+            {
+              "name": "direction",
+              "value": "desc"
+            },
+            {
+              "name": "per_page",
+              "value": "10"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "User-Agent",
+              "value": "n8n-competitive-intel"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {}
+          },
+          "timeout": 15000
+        }
+      },
+      "id": "8d406bd5-dff6-4b12-bcef-ed6798745eab",
+      "name": "Fetch GitHub Activity",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1808,
+        1520
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "url": "https://hn.algolia.com/api/v1/search_by_date",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "={{ $json.company }}"
+            },
+            {
+              "name": "tags",
+              "value": "story"
+            },
+            {
+              "name": "hitsPerPage",
+              "value": "20"
+            },
+            {
+              "name": "numericFilters",
+              "value": "=created_at_i>{{ $json.cutoff_epoch }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "d0010f25-844d-4891-b4f5-61ba221a56d1",
+      "name": "Fetch Hacker News",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1808,
+        1680
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "url": "=https://news.google.com/rss/search?q={{ encodeURIComponent($json.news_query) }}+when:2d&hl=en-US&gl=US&ceid=US:en",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          },
+          "timeout": 15000
+        }
+      },
+      "id": "41c6f5c2-30d4-41a7-8a16-6c049280a04e",
+      "name": "Fetch Google News RSS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1808,
+        1840
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "aadcfc8d-c828-4d82-a267-82cf37322328",
+      "name": "Parse News XML",
+      "type": "n8n-nodes-base.xml",
+      "typeVersion": 1,
+      "position": [
+        2016,
+        1840
+      ],
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "numberInputs": 4
+      },
+      "id": "e907893d-d3b2-4be7-9b4e-5c9229647531",
+      "name": "Merge All Sources",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        2240,
+        1584
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ---------------------------------------------------------------------------\n// NORMALIZER\n// Four sources, four completely different payload shapes -> one schema:\n//   { company, source, category, title, date, url, content, fingerprint }\n//\n// Every branch is defensive. A node that failed with continueOnFail arrives\n// here as { error: ... }; we convert it into a tagged _fetch_error item so the\n// IF node downstream can route it to the error log instead of killing the run.\n//\n// FINGERPRINT NOTE: we deliberately do NOT dedupe on URL alone. Google News\n// returns opaque news.google.com redirect tokens, so the same story arriving\n// from two feeds has two different URLs. We hash company + normalized title +\n// publisher host instead, which survives that.\n// ---------------------------------------------------------------------------\nconst ctx      = $('Loop Over Competitors').first().json;\nconst company  = ctx.company;\nconst cutoffMs = ctx.cutoff_epoch * 1000;\nconst out      = [];\n\nfunction fingerprint(title, url) {\n  const norm = String(title || '')\n    .toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\\s+/g, ' ').trim().slice(0, 120);\n  let host = 'unknown';\n  try { host = new URL(url).hostname.replace(/^www\\./, ''); } catch (e) { /* keep default */ }\n  const raw = company + '|' + norm + '|' + host;\n  let h = 5381;                                    // djb2, deterministic, no imports\n  for (let i = 0; i < raw.length; i++) h = ((h << 5) + h + raw.charCodeAt(i)) >>> 0;\n  return company.toLowerCase().replace(/\\s+/g, '-') + '-' + h.toString(16);\n}\n\nfunction clean(s) {\n  return String(s || '').replace(/<[^>]*>/g, ' ').replace(/\\s+/g, ' ').trim();\n}\n\nfunction push(source, category, title, date, url, content) {\n  if (!title || !url) return;\n  const ts = Date.parse(date);\n  const when = Number.isFinite(ts) ? ts : Date.now();\n  if (when < cutoffMs) return;                     // outside the lookback window\n  out.push({ json: {\n    company, source, category,\n    title:   clean(title).slice(0, 300),\n    date:    new Date(when).toISOString(),\n    url:     String(url),\n    content: clean(content).slice(0, 2500),\n    fingerprint: fingerprint(title, url),\n    run_date: ctx.run_date,\n    collected_at: new Date().toISOString(),\n    _fetch_error: false,\n  }});\n}\n\nfunction fail(source, message) {\n  out.push({ json: {\n    company, source, _fetch_error: true,\n    error_message: String(message).slice(0, 500),\n    run_date: ctx.run_date,\n    collected_at: new Date().toISOString(),\n  }});\n}\n\nfor (const item of $input.all()) {\n  const d = item.json || {};\n\n  if (d.error) { fail(d._source || 'upstream_fetch', d.error.message || d.error); continue; }\n\n  try {\n    // --- Hacker News (Algolia returns ONE object containing a hits array) ---\n    if (Array.isArray(d.hits)) {\n      for (const h of d.hits) {\n        push('hacker_news', 'community', h.title, h.created_at,\n             h.url || 'https://news.ycombinator.com/item?id=' + h.objectID,\n             'HN: ' + (h.points || 0) + ' points, ' + (h.num_comments || 0) + ' comments.');\n      }\n      continue;\n    }\n\n    // --- Google News (XML node output) ---\n    if (d.rss && d.rss.channel) {\n      const raw = d.rss.channel.item || [];\n      for (const n of (Array.isArray(raw) ? raw : [raw])) {\n        push('google_news', 'news', n.title, n.pubDate, n.link, n.description);\n      }\n      continue;\n    }\n\n    // --- GitHub (array response -> n8n already split it into items) ---\n    if (d.full_name && d.html_url) {\n      push('github', 'product_change',\n           d.full_name + ': ' + (d.description || 'repository updated'),\n           d.pushed_at, d.html_url,\n           'Stars ' + (d.stargazers_count || 0) + '. Language ' + (d.language || 'n/a') +\n           '. ' + (d.description || ''));\n      continue;\n    }\n\n    // --- Company blog (RSS Feed Read output) ---\n    if (d.link && (d.isoDate || d.pubDate)) {\n      push('company_blog', 'blog', d.title, d.isoDate || d.pubDate, d.link,\n           d.contentSnippet || d.content || d.summary);\n      continue;\n    }\n  } catch (e) {\n    fail('normalizer', e.message);\n  }\n}\n\n// Never return zero items - the loop needs at least one item to continue.\nif (out.length === 0) {\n  out.push({ json: { company, source: 'none', _fetch_error: false, _empty: true,\n                     run_date: ctx.run_date, collected_at: new Date().toISOString() }});\n}\nreturn out;"
+      },
+      "id": "f59cd729-429d-4160-b0f2-4e589fcd1a2c",
+      "name": "Normalize To Common Schema",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2480,
+        1616
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "ok",
+              "leftValue": "={{ $json._fetch_error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "8a06acc8-3036-4f47-adb1-0a43b08b2232",
+      "name": "Fetch Succeeded?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2752,
+        1616
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1fMCeM_tuTnzR05-aVOIvh5zwd5SuhHoA1209xRKOEys",
+          "mode": "list",
+          "cachedResultName": "AI Competitor Analysis (Alba)",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1fMCeM_tuTnzR05-aVOIvh5zwd5SuhHoA1209xRKOEys/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 339513125,
+          "mode": "list",
+          "cachedResultName": "error_log",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1fMCeM_tuTnzR05-aVOIvh5zwd5SuhHoA1209xRKOEys/edit#gid=339513125"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "company",
+              "displayName": "company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "source",
+              "displayName": "source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "_fetch_error",
+              "displayName": "_fetch_error",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "error_message",
+              "displayName": "error_message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "run_date",
+              "displayName": "run_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "collected_at",
+              "displayName": "collected_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "2c0ac9ca-ba13-4f3a-ba45-a61da64f8959",
+      "name": "Log Failed Source",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2960,
+        1824
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "LZh2j8xfwyBmE8Hh",
+          "name": "Google Sheets account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "amount": 2
+      },
+      "id": "b44d6e74-74c9-4687-9c14-15b1c90503c8",
+      "name": "Throttle Between Competitors",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        3120,
+        1616
+      ],
+      "webhookId": "8237e097-60c2-5e07-86d5-cd6548134253"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ---------------------------------------------------------------------------\n// Runs once, on the loop's \"done\" output, with every competitor's items pooled.\n// Collapses cross-competitor duplicates, sorts newest first, caps the batch.\n// ---------------------------------------------------------------------------\nconst seen = new Set();\nconst kept = [];\n\nfor (const item of $input.all()) {\n  const d = item.json;\n  if (d._fetch_error || d._empty || !d.fingerprint) continue;\n  if (seen.has(d.fingerprint)) continue;\n  seen.add(d.fingerprint);\n  kept.push(d);\n}\n\nkept.sort((a, b) => Date.parse(b.date) - Date.parse(a.date));\n\nconst cap = $('Build Competitor Registry').first().json.max_items_per_run || 40;\nreturn kept.slice(0, cap).map((json) => ({ json }));"
+      },
+      "id": "143cd385-1989-4eb9-b6bb-65dab7ceb40b",
+      "name": "Dedupe & Sort",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1472,
+        736
+      ],
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1fMCeM_tuTnzR05-aVOIvh5zwd5SuhHoA1209xRKOEys",
+          "mode": "list",
+          "cachedResultName": "AI Competitor Analysis (Alba)",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1fMCeM_tuTnzR05-aVOIvh5zwd5SuhHoA1209xRKOEys/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1749583725,
+          "mode": "list",
+          "cachedResultName": "seen_ledger",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1fMCeM_tuTnzR05-aVOIvh5zwd5SuhHoA1209xRKOEys/edit#gid=1749583725"
+        },
+        "options": {}
+      },
+      "id": "ed38fd77-0073-436e-bc1e-38f714e8917b",
+      "name": "Read Seen Ledger",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1712,
+        736
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "LZh2j8xfwyBmE8Hh",
+          "name": "Google Sheets account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ---------------------------------------------------------------------------\n// IDEMPOTENCY GATE\n// Anything whose fingerprint already exists in the seen_ledger sheet is\n// dropped. Re-running this workflow ten times on the same day produces exactly\n// one set of rows and one email - the second run finds nothing new.\n// ---------------------------------------------------------------------------\nconst ledger = new Set(\n  $input.all()\n    .map((r) => String(r.json.fingerprint || '').trim())\n    .filter(Boolean)\n);\n\nconst candidates = $('Dedupe & Sort').all();\nconst fresh = candidates.filter((c) => !ledger.has(c.json.fingerprint));\n\nif (fresh.length === 0) {\n  return [{ json: { _no_new_items: true, checked: candidates.length,\n                    ledger_size: ledger.size } }];\n}\nreturn fresh;"
+      },
+      "id": "2d19e727-232a-43bd-9add-4dc006ab2a3f",
+      "name": "Filter Already Seen",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1968,
+        736
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Competitor: {{ $json.company }}\nSource: {{ $json.source }}\nPublished: {{ $json.date }}\nTitle: {{ $json.title }}\nURL: {{ $json.url }}\n\nContent:\n{{ $json.content }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are a Competitive Intelligence Analyst embedded in OpenAI's strategy team.\n\nYou are handed ONE raw update about a competitor. Assess it the way an analyst briefing the executive team would: skeptical, specific, and willing to say something is unimportant.\n\nRules:\n- Judge the item on its merits. Most updates are routine. Do not inflate a minor blog post into a strategic threat.\n- \"Business impact\" means impact on OpenAI's revenue, moat, or roadmap - not a restatement of the headline.\n- \"Customer impact\" means what an OpenAI enterprise or API customer would notice or care about.\n- threat_level and opportunity_level are integers 1-10. A typical item is 2-4. Reserve 8+ for genuine strategic events (frontier model launch, major pricing move, large enterprise defection).\n- confidence is 1-10 and reflects how much signal the source text actually contains. Thin or headline-only sources should score low.\n- recommended_action must be a concrete next step someone could assign, not \"monitor the situation\".\n- executive_summary is ONE sentence, under 25 words, written for a reader who will read nothing else.\n\nReturn only the structured object. No preamble, no markdown."
+        }
+      },
+      "id": "949c08da-99d8-4489-b3bb-0a6d07493934",
+      "name": "AI Competitive Analyst",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.1,
+      "position": [
+        2480,
+        816
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000,
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "options": {
+          "temperature": 0.2
+        }
+      },
+      "id": "98d628bb-a0e2-4114-8d2b-6baa13962ef2",
+      "name": "Google Gemini Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        2464,
+        960
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "3WCGvTXprTLGznSu",
+          "name": "Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"category\": \"model_launch\",\n  \"summary\": \"Two to three sentences describing what actually happened.\",\n  \"business_impact\": \"How this affects OpenAI's revenue, moat, or roadmap.\",\n  \"customer_impact\": \"What an OpenAI customer would notice or care about.\",\n  \"sentiment\": \"positive\",\n  \"threat_level\": 7,\n  \"opportunity_level\": 3,\n  \"priority\": \"High\",\n  \"recommended_action\": \"A concrete, assignable next step.\",\n  \"confidence\": 8,\n  \"executive_summary\": \"One sentence under 25 words.\"\n}"
+      },
+      "id": "85ae9bf3-3098-49f7-b9e7-e3ac6eccbb21",
+      "name": "Structured Output Parser",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        2640,
+        960
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ---------------------------------------------------------------------------\n// AI OUTPUT VALIDATION + DETERMINISTIC PRIORITY RULES\n//\n// Two jobs:\n//  1. Never let a malformed / empty LLM response flow downstream. If parsing\n//     fails we degrade gracefully to a placeholder row rather than crashing.\n//  2. Priority is decided by RULES, not by the model. The LLM scores threat and\n//     opportunity; the business decides what \"Critical\" means. This keeps the\n//     exec report consistent run-to-run even if the model drifts.\n// ---------------------------------------------------------------------------\nconst source = $('Filter Already Seen').all();\nconst out = [];\n\nfunction clamp(v, lo, hi, dflt) {\n  const n = Number(v);\n  return Number.isFinite(n) ? Math.min(hi, Math.max(lo, Math.round(n))) : dflt;\n}\n\nfunction coerce(raw) {\n  if (raw && typeof raw === 'object') return raw;\n  if (typeof raw !== 'string') return null;\n  const cleaned = raw.replace(/```json\\n?|\\n?```/g, '').trim();\n  try { return JSON.parse(cleaned); } catch (e) { /* fall through */ }\n  const match = cleaned.match(/\\{[\\s\\S]*\\}/);\n  if (match) { try { return JSON.parse(match[0]); } catch (e) { /* give up */ } }\n  return null;\n}\n\n$input.all().forEach((item, i) => {\n  const base = (source[i] && source[i].json) || {};\n  const a = coerce(item.json.output !== undefined ? item.json.output : item.json) || {};\n  const parseFailed = !a.summary;\n\n  // --- Deterministic priority rules -----------------------------------------\n  const hay = ((base.title || '') + ' ' + (base.content || '')).toLowerCase();\n  let priority = 'Low';\n  if (/\\b(raises|raised|funding round|series [a-e]|valuation|acquires)\\b/.test(hay)) priority = 'Medium';\n  if (/\\b(pricing|price cut|per million tokens|free tier|now costs|cheaper)\\b/.test(hay)) priority = 'High';\n  if (/\\b(hiring spree|now hiring|headcount|open roles|expands team)\\b/.test(hay))      priority = 'High';\n  if (/\\b(launch(es|ed|ing)?|announc\\w+|introduc\\w+|new model|general availability|ga release)\\b/.test(hay)) priority = 'Critical';\n\n  const threat      = clamp(a.threat_level, 1, 10, 3);\n  const opportunity = clamp(a.opportunity_level, 1, 10, 3);\n\n  // A rule can promote priority but the model's own high threat score can too.\n  if (threat >= 8 && priority !== 'Critical') priority = 'Critical';\n\n  out.push({ json: {\n    run_date:           base.run_date,\n    company:            base.company,\n    source:             base.source,\n    title:              base.title,\n    url:                base.url,\n    date:               base.date,\n    fingerprint:        base.fingerprint,\n    category:           a.category || base.category || 'other',\n    summary:            a.summary || ('[AI analysis unavailable] ' + (base.title || '')),\n    business_impact:    a.business_impact  || 'Not assessed.',\n    customer_impact:    a.customer_impact  || 'Not assessed.',\n    sentiment:          a.sentiment || 'neutral',\n    threat_level:       threat,\n    opportunity_level:  opportunity,\n    impact_score:       Math.round((threat * 0.6 + opportunity * 0.4) * 10) / 10,\n    priority:           priority,\n    recommended_action: a.recommended_action || 'Review manually - AI produced no action.',\n    confidence:         clamp(a.confidence, 1, 10, parseFailed ? 1 : 5),\n    executive_summary:  a.executive_summary || a.summary || base.title,\n    ai_parse_failed:    parseFailed,\n  }});\n});\n\nreturn out;"
+      },
+      "id": "7385364b-4846-4eab-8c6a-4964bf13db9a",
+      "name": "Validate AI Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2784,
+        816
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "critical",
+                    "leftValue": "={{ $json.priority }}",
+                    "rightValue": "Critical",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Critical"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "high",
+                    "leftValue": "={{ $json.priority }}",
+                    "rightValue": "High",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "High"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "medium",
+                    "leftValue": "={{ $json.priority }}",
+                    "rightValue": "Medium",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Medium"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "low",
+                    "leftValue": "={{ $json.priority }}",
+                    "rightValue": "Low",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Low"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": 3
+        }
+      },
+      "id": "e4a89a78-9763-4d4c-8e2f-1faa6ade8cdb",
+      "name": "Route By Priority",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        2944,
+        704
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c",
+              "name": "priority_colour",
+              "value": "#b3261e",
+              "type": "string"
+            },
+            {
+              "id": "o",
+              "name": "priority_rank",
+              "value": 1,
+              "type": "number"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "1fe839eb-0d04-4585-b8fc-733fae6a8922",
+      "name": "Tag Critical",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3168,
+        496
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c",
+              "name": "priority_colour",
+              "value": "#c77700",
+              "type": "string"
+            },
+            {
+              "id": "o",
+              "name": "priority_rank",
+              "value": 2,
+              "type": "number"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "81232588-9cf4-4677-8832-dedb3fd82b8e",
+      "name": "Tag High",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3168,
+        656
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c",
+              "name": "priority_colour",
+              "value": "#1a73e8",
+              "type": "string"
+            },
+            {
+              "id": "o",
+              "name": "priority_rank",
+              "value": 3,
+              "type": "number"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "4c2543d0-39db-452c-8df7-22ff82800158",
+      "name": "Tag Medium",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3168,
+        816
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c",
+              "name": "priority_colour",
+              "value": "#5f6368",
+              "type": "string"
+            },
+            {
+              "id": "o",
+              "name": "priority_rank",
+              "value": 4,
+              "type": "number"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "6db45a17-eaf8-4bdd-9e9d-13f39373c9ac",
+      "name": "Tag Low",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3168,
+        976
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1fMCeM_tuTnzR05-aVOIvh5zwd5SuhHoA1209xRKOEys",
+          "mode": "list",
+          "cachedResultName": "AI Competitor Analysis (Alba)",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1fMCeM_tuTnzR05-aVOIvh5zwd5SuhHoA1209xRKOEys/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1275361398,
+          "mode": "list",
+          "cachedResultName": "history",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1fMCeM_tuTnzR05-aVOIvh5zwd5SuhHoA1209xRKOEys/edit#gid=1275361398"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "df6cf76b-2f5c-420f-9b7f-17ff6a8b69d7",
+      "name": "Append To History Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        3664,
+        736
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "LZh2j8xfwyBmE8Hh",
+          "name": "Google Sheets account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1fMCeM_tuTnzR05-aVOIvh5zwd5SuhHoA1209xRKOEys",
+          "mode": "list",
+          "cachedResultName": "AI Competitor Analysis (Alba)",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1fMCeM_tuTnzR05-aVOIvh5zwd5SuhHoA1209xRKOEys/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1749583725,
+          "mode": "list",
+          "cachedResultName": "seen_ledger",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1fMCeM_tuTnzR05-aVOIvh5zwd5SuhHoA1209xRKOEys/edit#gid=1749583725"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "run_date",
+              "displayName": "run_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "company",
+              "displayName": "company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "source",
+              "displayName": "source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "title",
+              "displayName": "title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "url",
+              "displayName": "url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "date",
+              "displayName": "date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "fingerprint",
+              "displayName": "fingerprint",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "category",
+              "displayName": "category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "summary",
+              "displayName": "summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "business_impact",
+              "displayName": "business_impact",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "customer_impact",
+              "displayName": "customer_impact",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "sentiment",
+              "displayName": "sentiment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "threat_level",
+              "displayName": "threat_level",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "opportunity_level",
+              "displayName": "opportunity_level",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "impact_score",
+              "displayName": "impact_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "priority",
+              "displayName": "priority",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "recommended_action",
+              "displayName": "recommended_action",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "confidence",
+              "displayName": "confidence",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "executive_summary",
+              "displayName": "executive_summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "ai_parse_failed",
+              "displayName": "ai_parse_failed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "priority_colour",
+              "displayName": "priority_colour",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "priority_rank",
+              "displayName": "priority_rank",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "508535fa-2b81-4b56-b4c8-c34f4dce16b7",
+      "name": "Append To Seen Ledger",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        3872,
+        736
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "LZh2j8xfwyBmE8Hh",
+          "name": "Google Sheets account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "items",
+        "options": {}
+      },
+      "id": "63fe55b3-4063-40d5-8a38-1fce8b5c0fba",
+      "name": "Aggregate For Report",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        4080,
+        736
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ---------------------------------------------------------------------------\n// HTML EXECUTIVE REPORT\n// Inline styles only - Gmail/Outlook strip <style> blocks. Tables for layout\n// for the same reason. Sections are ordered by priority; empty ones are hidden.\n// ---------------------------------------------------------------------------\nconst rows = ($json.items || []).slice();\nrows.sort((a, b) => (a.priority_rank - b.priority_rank) || (b.impact_score - a.impact_score));\n\nconst runDate = rows.length ? rows[0].run_date : new Date().toISOString().slice(0, 10);\nconst companies = [...new Set(rows.map((r) => r.company))];\nconst criticals = rows.filter((r) => r.priority === 'Critical');\nconst avgThreat = rows.length\n  ? (rows.reduce((s, r) => s + r.threat_level, 0) / rows.length).toFixed(1) : '0.0';\n\nconst esc = (s) => String(s == null ? '' : s)\n  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;');\n\nfunction card(r) {\n  return `\n  <tr><td style=\"padding:0 0 14px 0;\">\n    <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"border-left:4px solid ${r.priority_colour};background:#fafafa;border-radius:3px;\">\n      <tr><td style=\"padding:14px 16px;\">\n        <div style=\"font:600 11px/1 -apple-system,Segoe UI,Roboto,sans-serif;color:${r.priority_colour};letter-spacing:.08em;text-transform:uppercase;\">\n          ${esc(r.company)} &nbsp;&middot;&nbsp; ${esc(r.category)} &nbsp;&middot;&nbsp; ${esc(r.source)}\n        </div>\n        <div style=\"font:600 16px/1.35 -apple-system,Segoe UI,Roboto,sans-serif;color:#1a1a1a;margin:7px 0 6px;\">\n          <a href=\"${esc(r.url)}\" style=\"color:#1a1a1a;text-decoration:none;\">${esc(r.title)}</a>\n        </div>\n        <div style=\"font:400 14px/1.55 -apple-system,Segoe UI,Roboto,sans-serif;color:#3c4043;\">${esc(r.summary)}</div>\n        <div style=\"font:400 13px/1.55 -apple-system,Segoe UI,Roboto,sans-serif;color:#3c4043;margin-top:9px;\">\n          <strong style=\"color:#1a1a1a;\">Business impact:</strong> ${esc(r.business_impact)}<br>\n          <strong style=\"color:#1a1a1a;\">Customer impact:</strong> ${esc(r.customer_impact)}<br>\n          <strong style=\"color:#1a1a1a;\">Action:</strong> ${esc(r.recommended_action)}\n        </div>\n        <div style=\"font:400 11px/1 -apple-system,Segoe UI,Roboto,sans-serif;color:#80868b;margin-top:11px;\">\n          Threat ${r.threat_level}/10 &nbsp;&middot;&nbsp; Opportunity ${r.opportunity_level}/10 &nbsp;&middot;&nbsp;\n          Impact ${r.impact_score} &nbsp;&middot;&nbsp; Confidence ${r.confidence}/10 &nbsp;&middot;&nbsp;\n          Sentiment ${esc(r.sentiment)}${r.ai_parse_failed ? ' &nbsp;&middot;&nbsp; <span style=\"color:#b3261e;\">AI parse degraded</span>' : ''}\n        </div>\n      </td></tr>\n    </table>\n  </td></tr>`;\n}\n\nfunction section(label, list) {\n  if (!list.length) return '';\n  return `\n  <tr><td style=\"padding:20px 0 10px;\">\n    <div style=\"font:700 12px/1 -apple-system,Segoe UI,Roboto,sans-serif;color:#1a1a1a;letter-spacing:.1em;text-transform:uppercase;border-bottom:1px solid #e0e0e0;padding-bottom:7px;\">\n      ${label} <span style=\"color:#80868b;font-weight:400;\">(${list.length})</span>\n    </div>\n  </td></tr>\n  <tr><td><table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\">${list.map(card).join('')}</table></td></tr>`;\n}\n\nconst actions = rows\n  .filter((r) => r.priority === 'Critical' || r.priority === 'High')\n  .map((r) => `<li style=\"margin-bottom:7px;\"><strong>${esc(r.company)}:</strong> ${esc(r.recommended_action)}</li>`)\n  .join('') || '<li style=\"color:#80868b;\">No high-priority actions today.</li>';\n\nconst html = `<!DOCTYPE html><html><body style=\"margin:0;padding:24px;background:#f1f3f4;\">\n<table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\"><tr><td align=\"center\">\n<table width=\"660\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#ffffff;border-radius:4px;padding:30px 34px;max-width:660px;\">\n\n  <tr><td style=\"padding-bottom:6px;\">\n    <div style=\"font:700 20px/1.3 -apple-system,Segoe UI,Roboto,sans-serif;color:#1a1a1a;\">Competitive Intelligence Brief</div>\n    <div style=\"font:400 13px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;color:#80868b;margin-top:3px;\">\n      ${runDate} &nbsp;&middot;&nbsp; ${rows.length} new items &nbsp;&middot;&nbsp; ${companies.length} competitors tracked\n    </div>\n  </td></tr>\n\n  <tr><td style=\"padding:16px 0 4px;\">\n    <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#f8f9fa;border-radius:3px;\">\n      <tr><td style=\"padding:14px 16px;font:400 14px/1.6 -apple-system,Segoe UI,Roboto,sans-serif;color:#3c4043;\">\n        <strong style=\"color:#1a1a1a;\">Executive summary.</strong>\n        ${rows.length} new updates across ${esc(companies.join(', '))}.\n        ${criticals.length ? `<strong style=\"color:#b3261e;\">${criticals.length} critical.</strong>` : 'Nothing critical.'}\n        Average threat level ${avgThreat}/10.\n        ${criticals.length ? '<br><br>' + criticals.map((c) => '&bull; ' + esc(c.executive_summary)).join('<br>') : ''}\n      </td></tr>\n    </table>\n  </td></tr>\n\n  ${section('Critical', rows.filter((r) => r.priority === 'Critical'))}\n  ${section('High priority', rows.filter((r) => r.priority === 'High'))}\n  ${section('Medium priority', rows.filter((r) => r.priority === 'Medium'))}\n  ${section('Low priority', rows.filter((r) => r.priority === 'Low'))}\n\n  <tr><td style=\"padding:22px 0 8px;\">\n    <div style=\"font:700 12px/1 -apple-system,Segoe UI,Roboto,sans-serif;color:#1a1a1a;letter-spacing:.1em;text-transform:uppercase;border-bottom:1px solid #e0e0e0;padding-bottom:7px;\">Recommended actions</div>\n  </td></tr>\n  <tr><td style=\"font:400 14px/1.55 -apple-system,Segoe UI,Roboto,sans-serif;color:#3c4043;\">\n    <ul style=\"margin:8px 0 0;padding-left:20px;\">${actions}</ul>\n  </td></tr>\n\n  <tr><td style=\"padding-top:26px;border-top:1px solid #e0e0e0;margin-top:20px;\">\n    <div style=\"font:400 11px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;color:#9aa0a6;\">\n      Generated by the AI Competitive Intelligence workflow. Sources: company RSS, GitHub API, Hacker News, Google News.\n      Priority is rule-based; threat and opportunity scores are model-generated and advisory.\n    </div>\n  </td></tr>\n\n</table></td></tr></table></body></html>`;\n\nconst subject = criticals.length\n  ? `[CRITICAL] Competitive Brief ${runDate} - ${criticals.length} critical, ${rows.length} updates`\n  : `Competitive Brief ${runDate} - ${rows.length} updates`;\n\nreturn [{ json: { html, subject, total: rows.length, critical_count: criticals.length,\n                  run_date: runDate, generated_at: new Date().toISOString() } }];"
+      },
+      "id": "903df12c-7809-4f6e-9ede-bbb26593f2c2",
+      "name": "Build HTML Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4304,
+        736
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 1. Collect\n\nEvery morning at 9, we go looking for news about six competitors.\n\nFor each company we check four places: their own blog, their GitHub\naccount, Hacker News, and Google News. We only keep things published\nin the last day or two — old news isn't news.\n\nWebsites go down and feeds break. So if one source fails, we try it\nthree times, then give up on that one source and carry on with the\nrest. A dead blog feed for one company never stops the other five\nfrom being checked. Anything that failed gets written to the\nerror_log sheet so you can see what broke and fix it.",
+        "height": 724,
+        "width": 3100,
+        "color": 4
+      },
+      "id": "6fdfbe5d-a45b-482c-85b4-1407740085bd",
+      "name": "Note Collect",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        336,
+        1312
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 2. Dedupe & Idempotency\n\nThe same story shows up in lots of places. We only want to read\nabout it once.\n\nFirst we throw away exact repeats. Then we check the \"seen ledger\" —\na sheet listing every story we've already reported on. Anything\nalready in that list gets dropped.\n\nThat's what makes this safe to re-run. If you run the workflow five\ntimes today, you get one email. The first run reports the news, the\nnext four find nothing new and quietly stop.\n\nNote: we don't match stories by their web link. Google News gives\nevery article a scrambled link, so the same story arrives with\ndifferent links each time. We match on the headline and the\npublisher instead, which actually works.",
+        "height": 920,
+        "width": 992,
+        "color": 5
+      },
+      "id": "ef5722b5-61ee-410c-8085-06296cd98b69",
+      "name": "Note Dedupe",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1408,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 3. Analyse\n\nEach new story goes to Gemini, which reads it as if it were a\ncompetitive analyst sitting inside OpenAI.\n\nFor every story it answers: what happened, what this means for our\nbusiness, what our customers would notice, how threatening it is\n(1-10), how much opportunity it holds (1-10), how confident it is in\nits own read, and what someone should actually do about it.\n\nTwo safety nets:\n\nThe AI does NOT decide priority. It scores things; a set of fixed\nrules decides what counts as Critical or High. That way \"Critical\"\nmeans the same thing every day, even if the AI has an off morning.\nThose rules live in the Validate AI Output node and you can read\nthem without being a programmer.\n\nIf the AI returns something broken or empty, we don't crash. That\nstory goes through as a low-confidence placeholder and the run\ncontinues.",
+        "height": 924,
+        "width": 1132,
+        "color": 6
+      },
+      "id": "4b8d6724-84d3-4047-ae5e-3a05c2193a64",
+      "name": "Note AI",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2416,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 4. Deliver\n\nEvery branch comes back together at the Merge node, so everything\ntravels onward as one batch. This is why you get one email instead\nof one per priority level.\n\nEach story is saved to two sheets: \"history\" for the record, and\n\"seen ledger\" so tomorrow's run knows to skip it. This happens\nbefore the email is built — deliberately. If the email fails to\nsend, tomorrow's run still won't repeat today's stories.\n\nThen everything is gathered into a single report, formatted as\nHTML, and emailed. Stories are grouped Critical first, then High,\nMedium and Low, with the recommended actions collected at the\nbottom.\n\nIf the email itself fails, that failure gets logged too, so a\nsilent inbox never goes unexplained.",
+        "height": 920,
+        "width": 1276,
+        "color": 3
+      },
+      "id": "0533032d-42aa-4faa-8d40-d8ed1c1b2210",
+      "name": "Note Output",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        3552,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "content": "Please update your respective email to test",
+        "height": 80,
+        "width": 394,
+        "color": 7
+      },
+      "id": "bbda1b80-9a51-4afc-a16b-48b7a4992be3",
+      "name": "Attribution",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        4416,
+        896
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "maluraditya@gmail.com",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.html }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        4544,
+        736
+      ],
+      "id": "3c4a3780-4b59-4d05-a042-b8497ebd182a",
+      "name": "Send a message",
+      "webhookId": "51c8218c-7a63-4f96-ba74-f91e4fe46814",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "8rxaKAL8ydHoEh7U",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "numberInputs": 4
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        3424,
+        704
+      ],
+      "id": "25ce819f-50ea-4e76-95c5-eaaf9b5cbefb",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "maxItems": 10
+      },
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        2176,
+        736
+      ],
+      "id": "b1a0a2a9-c196-488c-997a-6a7839157ccc",
+      "name": "Limit",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "content": "Limiting it to 10 intentionally ",
+        "height": 80,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        2128,
+        912
+      ],
+      "typeVersion": 1,
+      "id": "fcd47858-676a-436d-a6fd-4746b0be04d4",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## What this workflow does\n\nWe are OpenAI. This workflow watches our competitors for us.\n\nEvery weekday morning at 9am it checks what six rival AI labs have\nbeen doing, works out which of it actually matters to us, and emails\nthe strategy team a single briefing.\n\nWho we're watching:\n\n  Anthropic          Claude models — our closest rival on frontier\n                     model quality and enterprise API business\n  Google DeepMind    Gemini — backed by Google's distribution and\n                     compute\n  xAI                Grok — bundled into X and increasingly into\n                     other products\n  Perplexity         AI search — competes for the consumer\n                     question-answering use case\n  Mistral AI         Open-weight European models — competes on cost\n                     and sovereignty\n  Cohere             Enterprise and RAG-focused — competes for the\n                     same business customers\n\nEverything the AI reads is judged from OpenAI's point of view:\ndoes this threaten our revenue, our technical lead, or our\ncustomers? A competitor's routine blog post is not news. A\ncompetitor matching our flagship model at half the price is.\n\nTo change who we watch, edit the Build Competitor Registry node.\nThat list is the only place competitors are defined — nothing else\nin the workflow needs touching.",
+        "height": 2128,
+        "width": 5584
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -176,
+        80
+      ],
+      "typeVersion": 1,
+      "id": "6ca2fbe1-264d-4e21-93fa-e4eabb20852e",
+      "name": "Sticky Note1"
+    }
+  ],
+  "pinData": {
+    "Daily 9AM Trigger": [
+      {
+        "json": {
+          "timestamp": "2026-07-25T01:25:35.151+05:30",
+          "Readable date": "July 25th 2026, 1:25:35 am",
+          "Readable time": "1:25:35 am",
+          "Day of week": "Saturday",
+          "Year": "2026",
+          "Month": "July",
+          "Day of month": "25",
+          "Hour": "01",
+          "Minute": "25",
+          "Second": "35",
+          "Timezone": "Asia/Calcutta (UTC+05:30)"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Daily 9AM Trigger": {
+      "main": [
+        [
+          {
+            "node": "Build Competitor Registry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Competitor Registry": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Competitors",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Competitors": {
+      "main": [
+        [
+          {
+            "node": "Dedupe & Sort",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fetch Company Blog (RSS)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch GitHub Activity",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Hacker News",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Google News RSS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Company Blog (RSS)": {
+      "main": [
+        [
+          {
+            "node": "Merge All Sources",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch GitHub Activity": {
+      "main": [
+        [
+          {
+            "node": "Merge All Sources",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Fetch Hacker News": {
+      "main": [
+        [
+          {
+            "node": "Merge All Sources",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Fetch Google News RSS": {
+      "main": [
+        [
+          {
+            "node": "Parse News XML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse News XML": {
+      "main": [
+        [
+          {
+            "node": "Merge All Sources",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Merge All Sources": {
+      "main": [
+        [
+          {
+            "node": "Normalize To Common Schema",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize To Common Schema": {
+      "main": [
+        [
+          {
+            "node": "Fetch Succeeded?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Succeeded?": {
+      "main": [
+        [
+          {
+            "node": "Throttle Between Competitors",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Failed Source",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Failed Source": {
+      "main": [
+        []
+      ]
+    },
+    "Throttle Between Competitors": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Competitors",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dedupe & Sort": {
+      "main": [
+        [
+          {
+            "node": "Read Seen Ledger",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Seen Ledger": {
+      "main": [
+        [
+          {
+            "node": "Filter Already Seen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Already Seen": {
+      "main": [
+        [
+          {
+            "node": "Limit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Competitive Analyst": {
+      "main": [
+        [
+          {
+            "node": "Validate AI Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Competitive Analyst",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Competitive Analyst",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate AI Output": {
+      "main": [
+        [
+          {
+            "node": "Route By Priority",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route By Priority": {
+      "main": [
+        [
+          {
+            "node": "Tag Critical",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Tag High",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Tag Medium",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Tag Low",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tag Critical": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tag High": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Tag Medium": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Tag Low": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Append To History Sheet": {
+      "main": [
+        [
+          {
+            "node": "Append To Seen Ledger",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append To Seen Ledger": {
+      "main": [
+        [
+          {
+            "node": "Aggregate For Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate For Report": {
+      "main": [
+        [
+          {
+            "node": "Build HTML Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build HTML Report": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Append To History Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit": {
+      "main": [
+        [
+          {
+            "node": "AI Competitive Analyst",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "d517657a-635a-4320-a04d-ff9e86c6abcb",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "76a05cfab8cf2490f0dae51a6dc3956afe30bd2ab1157a0f1095cc7a6627b3c3"
+  },
+  "nodeGroups": [],
+  "id": "27OIz4WrPwAA8wBY",
+  "tags": []
+}
