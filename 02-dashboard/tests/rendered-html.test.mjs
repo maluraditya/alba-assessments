@@ -25,6 +25,12 @@ test("keeps deployment config imports in committed source directories", async ()
   assert.match(viteConfig, /\.\/config\/sites-vite-plugin/);
   await access(path.join(root, "config/sites-vite-plugin.ts"));
   assert.doesNotMatch(viteConfig, /\.\/build\//);
+
+  const packageJson = JSON.parse(await source("package.json"));
+  assert.equal(packageJson.scripts["build:vercel"], "next build");
+  const vercelConfig = JSON.parse(await source("vercel.json"));
+  assert.equal(vercelConfig.framework, "nextjs");
+  assert.equal(vercelConfig.buildCommand, "npm run build:vercel");
 });
 
 test("uses Supabase as the only CRM source of truth", async () => {

@@ -23,6 +23,12 @@ Set these values in the hosting platform:
 
 The publishable key is intentionally available to the browser. RLS is the authorization boundary. Never expose the service-role key.
 
+## Frontend builds
+
+Vercel uses the native Next.js build declared in `vercel.json` and writes its
+framework output to `.next`. The default `npm run build` remains the
+Cloudflare/Vinext build used by the repository's Sites-compatible workflow.
+
 ## Release gate
 
 1. Run `npm ci`.
