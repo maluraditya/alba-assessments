@@ -25,9 +25,9 @@ The publishable key is intentionally available to the browser. RLS is the author
 
 ## Frontend builds
 
-Vercel uses the native Next.js build declared in `vercel.json` and writes its
-framework output to `.next`. The default `npm run build` remains the
-Cloudflare/Vinext build used by the repository's Sites-compatible workflow.
+Vercel uses the native `npm run build` command declared in `vercel.json` and
+writes its framework output to `.next`. Use `npm run build:sites` when creating
+the Cloudflare/Vinext bundle for the repository's Sites-compatible workflow.
 
 ## Release gate
 
