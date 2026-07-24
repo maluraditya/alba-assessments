@@ -24,13 +24,13 @@ export function Sidebar() {
     router.refresh();
   }
   return (
-    <aside className="fixed inset-y-0 left-0 z-30 hidden w-[244px] flex-col border-r border-white/[0.07] bg-[#10110f] text-white lg:flex">
+    <aside className="fixed inset-y-0 left-0 z-30 hidden w-[244px] flex-col border-r border-[#dcddd6] bg-white text-[#20211d] lg:flex">
       <div className="flex h-16 items-center gap-2.5 px-5">
-        <span className="grid size-7 place-items-center rounded-lg bg-[#d8ff72] text-[#10110f]">
+        <span className="grid size-7 place-items-center rounded-lg bg-[#d8ff72] text-[#20211d]">
           <Sparkles className="size-4" strokeWidth={2.5} />
         </span>
         <span className="text-sm font-semibold tracking-[-0.02em]">PipelineOS</span>
-        <span className="ml-auto rounded bg-white/[0.06] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-[#86887f]">
+        <span className="ml-auto rounded bg-[#f0f1eb] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-[#777970]">
           Pro
         </span>
       </div>
@@ -49,12 +49,12 @@ export function Sidebar() {
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "group flex h-9 items-center gap-3 rounded-lg px-3 text-[13px] font-medium text-[#8f9189] transition-colors hover:bg-white/[0.05] hover:text-[#f3f3ef]",
+                  "group flex h-9 items-center gap-3 rounded-lg px-3 text-[13px] font-medium text-[#777970] transition-colors hover:bg-[#f4f5ef] hover:text-[#20211d]",
                   active &&
-                    "bg-white/[0.08] text-white shadow-[0_1px_0_rgba(255,255,255,.04)_inset]",
+                    "bg-[#eef5df] text-[#20211d] shadow-[0_1px_0_rgba(255,255,255,.7)_inset]",
                 )}
               >
-                <Icon className={cn("size-[15px]", active && "text-[#d8ff72]")} />
+                <Icon className={cn("size-[15px]", active && "text-[#719d2c]")} />
                 {item.label}
               </Link>
             );
@@ -66,8 +66,8 @@ export function Sidebar() {
         <Link
           href="/settings"
           className={cn(
-            "flex h-9 items-center gap-3 rounded-lg px-3 text-[13px] font-medium text-[#8f9189] hover:bg-white/[0.05] hover:text-white",
-            path === "/settings" && "bg-white/[0.08] text-white",
+            "flex h-9 items-center gap-3 rounded-lg px-3 text-[13px] font-medium text-[#777970] hover:bg-[#f4f5ef] hover:text-[#20211d]",
+            path === "/settings" && "bg-[#eef5df] text-[#20211d]",
           )}
         >
           {(() => {
@@ -78,12 +78,12 @@ export function Sidebar() {
         </Link>
       </nav>
 
-      <div className="border-t border-white/[0.07] p-3">
+      <div className="border-t border-[#e4e5de] p-3">
         <div className="mb-2 flex items-center gap-1">
-          <button className="rounded-md p-2 text-[#777970] hover:bg-white/[0.06] hover:text-white" aria-label="Notifications">
+          <button className="rounded-md p-2 text-[#777970] hover:bg-[#f0f1eb] hover:text-[#20211d]" aria-label="Notifications">
             <Bell className="size-4" />
           </button>
-          <button className="rounded-md p-2 text-[#777970] hover:bg-white/[0.06] hover:text-white" aria-label="Help">
+          <button className="rounded-md p-2 text-[#777970] hover:bg-[#f0f1eb] hover:text-[#20211d]" aria-label="Help">
             <HelpCircle className="size-4" />
           </button>
         </div>
@@ -92,10 +92,10 @@ export function Sidebar() {
             {initials(account.name)}
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-xs font-medium text-white">{account.name}</span>
+            <span className="block truncate text-xs font-medium text-[#20211d]">{account.name}</span>
             <span className="block truncate text-[10px] text-[#6f716a]">{account.email}</span>
           </span>
-          <button onClick={signOut} className="rounded-md p-2 text-[#777970] hover:bg-white/[0.06] hover:text-white" aria-label="Sign out"><LogOut className="size-3.5" /></button>
+          <button onClick={signOut} className="rounded-md p-2 text-[#777970] hover:bg-[#f0f1eb] hover:text-[#20211d]" aria-label="Sign out"><LogOut className="size-3.5" /></button>
         </div>
       </div>
     </aside>

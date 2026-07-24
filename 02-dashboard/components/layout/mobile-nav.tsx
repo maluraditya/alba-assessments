@@ -13,17 +13,17 @@ export function MobileNav() {
   return (
     <Dialog.Root>
       <Dialog.Trigger asChild>
-        <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Open navigation">
+        <Button variant="ghost" size="icon" className="text-[#66685f] hover:bg-[#eceee6] hover:text-[#20211d] lg:hidden" aria-label="Open navigation">
           <Menu className="size-5" />
         </Button>
       </Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" />
-        <Dialog.Content className="fixed inset-y-0 left-0 z-50 w-[300px] bg-[#10110f] p-5 text-white shadow-2xl">
+        <Dialog.Content className="fixed inset-y-0 left-0 z-50 w-[300px] border-r border-[#dcddd6] bg-white p-5 text-[#20211d] shadow-2xl">
           <div className="flex items-center justify-between">
             <span className="font-semibold">PipelineOS</span>
             <Dialog.Close asChild>
-              <Button variant="ghost" size="icon" aria-label="Close navigation">
+              <Button variant="ghost" size="icon" className="text-[#66685f] hover:bg-[#eceee6] hover:text-[#20211d]" aria-label="Close navigation">
                 <X className="size-5" />
               </Button>
             </Dialog.Close>
@@ -37,8 +37,8 @@ export function MobileNav() {
                   <Link
                     href={item.href}
                     className={cn(
-                      "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-[#999b93]",
-                      active && "bg-white/[0.08] text-white",
+                      "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-[#777970] hover:bg-[#f4f5ef] hover:text-[#20211d]",
+                      active && "bg-[#eef5df] text-[#20211d]",
                     )}
                   >
                     <Icon className="size-4" />

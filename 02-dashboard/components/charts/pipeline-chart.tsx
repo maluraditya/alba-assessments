@@ -32,7 +32,7 @@ export function PipelineChart({ data }: { data: StageMetric[] }) {
             labelStyle={chartTooltipLabelStyle}
             formatter={(value) => [formatCurrency(Number(value)), "Pipeline"]}
           />
-          <Bar dataKey="value" fill="#24251f" radius={[6, 6, 2, 2]} maxBarSize={42} />
+          <Bar dataKey="value" fill="#86b831" radius={[6, 6, 2, 2]} maxBarSize={42} />
         </BarChart>
       </ResponsiveContainer>
     </div>

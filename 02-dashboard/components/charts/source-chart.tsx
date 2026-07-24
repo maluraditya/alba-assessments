@@ -8,7 +8,7 @@ import {
 } from "@/components/charts/chart-tooltip-theme";
 import type { SourceMetric } from "@/lib/types";
 
-const colors = ["#25261f", "#9aca43", "#c8b6ff", "#f2bd5a", "#8aa1b1"];
+const colors = ["#58604b", "#9aca43", "#c8b6ff", "#f2bd5a", "#8aa1b1"];
 
 export function SourceChart({ data }: { data: SourceMetric[] }) {
   return (
