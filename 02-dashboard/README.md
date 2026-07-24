@@ -56,6 +56,7 @@ Remove assessment accounts and seed migrations before adapting this repository f
 
 ## Documentation
 
+- [End-to-end product & technical guide (DOCX)](docs/PipelineOS_End-to-End_Documentation.docx)
 - [Requirements checklist](docs/REQUIREMENTS.md)
 - [Build log](docs/BUILD_LOG.md)
 - [Database schema](docs/DATABASE.md)
