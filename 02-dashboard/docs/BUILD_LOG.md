@@ -87,13 +87,13 @@ With more time, I would add Playwright coverage for complete browser-based authe
 
 ## Time spent
 
-The initial assessment-ready build took approximately **3.5 hours**. Additional review-driven polish and production hardening took approximately **2 hours**, for roughly **5.5 hours total**.
+The initial end-to-end build took approximately **2.5 hours**. Review-driven UI refinement and production hardening took approximately **1.5 hours**, followed by **30 minutes** of final documentation and security verification, for roughly **4.5 hours total**.
 
-- Product scope, schema, and architecture: ~35 minutes
-- Supabase migrations, authentication, RLS, and seed workspaces: ~60 minutes
-- CRUD services, forms, search, and route implementation: ~65 minutes
-- SQL analytics, charts, and dashboard composition: ~60 minutes
-- Documentation and security verification: ~35 minutes
-- UI iteration, authentication UX, deployment diagnosis, and production hardening: ~75 minutes
+- Product scope, schema, and architecture: ~20 minutes
+- Supabase migrations, authentication, RLS, and seed workspaces: ~45 minutes
+- CRUD services, forms, search, and route implementation: ~45 minutes
+- SQL analytics, charts, and dashboard composition: ~40 minutes
+- Documentation and security verification: ~30 minutes
+- UI iteration, authentication UX, deployment diagnosis, and production hardening: ~90 minutes
 
 The extra time beyond the original assessment window went primarily into deployment compatibility, live security verification, and interface iteration rather than expanding the product scope.
